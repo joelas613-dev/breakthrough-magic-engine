@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Activity, Beaker, Dna, Zap, Shield, Check, Loader2, Sparkles, Clock, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
@@ -258,10 +258,10 @@ function EmptyState() {
 function LoadingState() {
   const stages = ["Estimating biomarkers…", "Cross-referencing 400k outcomes…", "Composing supplement stack…", "Finalizing weekly protocol…"];
   const [stage, setStage] = useState(0);
-  useState(() => {
+  useEffect(() => {
     const id = setInterval(() => setStage((s) => (s + 1) % stages.length), 1200);
     return () => clearInterval(id);
-  });
+  }, [stages.length]);
   return (
     <div className="h-full min-h-[500px] border border-primary/30 rounded-xl flex flex-col items-center justify-center text-center p-8 bg-primary/5">
       <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
