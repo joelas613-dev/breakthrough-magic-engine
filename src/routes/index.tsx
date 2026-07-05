@@ -52,9 +52,12 @@ function Nav() {
           <Link to="/he" className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition border border-border rounded px-2 py-1">
             עברית
           </Link>
-          <a href="#waitlist" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
-            Get $10/mo access
-          </a>
+          <Link to="/app" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition">
+            Sign in
+          </Link>
+          <Link to="/app" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
+            Open tutor
+          </Link>
         </div>
       </div>
     </header>

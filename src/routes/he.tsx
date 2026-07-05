@@ -62,9 +62,9 @@ function Nav() {
           <Link to="/" className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition border border-border rounded px-2 py-1">
             English
           </Link>
-          <a href="#waitlist" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition whitespace-nowrap">
-            הצטרפו ב-₪35/חודש
-          </a>
+          <Link to="/app" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition whitespace-nowrap">
+            פתח מורה
+          </Link>
         </div>
       </div>
     </header>
