@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Activity, Beaker, Dna, Zap, Shield, Check, Loader2, Sparkles, Clock, TrendingUp } from "lucide-react";
+import { ArrowRight, Activity, Beaker, Dna, Zap, Shield, Check, Loader2, Sparkles, Clock, TrendingUp, Upload, FileText, X } from "lucide-react";
 import { toast } from "sonner";
 import heroDrop from "@/assets/hero-drop.jpg";
-import { generateProtocol, joinWaitlist, type ProtocolResult } from "@/lib/lazarus.functions";
+import { generateProtocol, analyzeBloodTest, joinWaitlist, type ProtocolResult } from "@/lib/lazarus.functions";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
@@ -150,9 +150,22 @@ function HowItWorks() {
 function LiveDemo() {
   const [form, setForm] = useState({ age: 32, sex: "male" as "male" | "female" | "other", primaryGoal: "Extend healthspan and sharpen mental clarity", energy: 6, sleep: 6.5, concerns: "" });
   const [result, setResult] = useState<ProtocolResult | null>(null);
+  const [pdf, setPdf] = useState<{ name: string; base64: string } | null>(null);
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (pdf) {
+        return await analyzeBloodTest({
+          data: {
+            age: form.age,
+            sex: form.sex,
+            primaryGoal: form.primaryGoal,
+            concerns: form.concerns,
+            pdfBase64: pdf.base64,
+            filename: pdf.name,
+          },
+        });
+      }
       return await generateProtocol({ data: form });
     },
     onSuccess: (data) => {
@@ -162,6 +175,18 @@ function LiveDemo() {
     onError: (e: Error) => toast.error(e.message || "The AI is warming up. Try again in a moment."),
   });
 
+  const handleFile = async (file: File) => {
+    if (file.type !== "application/pdf") { toast.error("Please upload a PDF file."); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("PDF too large. Max 8MB."); return; }
+    const buf = await file.arrayBuffer();
+    let binary = "";
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    setPdf({ name: file.name, base64 });
+    toast.success(`${file.name} loaded. AI will analyze the real values.`);
+  };
+
   return (
     <section id="demo" className="py-24 md:py-32 border-t border-border relative">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
@@ -170,13 +195,40 @@ function LiveDemo() {
           <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5" /> 02 · Live AI Demo
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">See what Lazarus would build for you.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">The real thing pulls from your blood. This demo fabricates plausible markers from a short questionnaire — the AI, and the protocol logic, are 100% live.</p>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Upload your blood test. Get your protocol.</h2>
+          <p className="mt-4 text-muted-foreground text-lg">Drop any PDF blood test (Maccabi, Clalit, Quest, LabCorp — any lab). Our AI reads your actual values, flags what matters, and builds a longevity protocol in 20 seconds. No PDF? Skip the upload and we'll simulate from your profile.</p>
         </div>
 
         <div className="grid md:grid-cols-[1fr_1.4fr] gap-6">
           {/* Form */}
           <div className="bg-surface border border-border rounded-xl p-6 md:p-8 space-y-5 h-fit sticky top-24">
+            <div>
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" /> Blood test PDF
+                <span className="ml-auto text-[10px] text-primary">Recommended</span>
+              </label>
+              {pdf ? (
+                <div className="mt-2 flex items-center gap-3 p-3 bg-primary/10 border border-primary/40 rounded-md">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{pdf.name}</div>
+                    <div className="text-[10px] font-mono text-primary uppercase tracking-widest">Real values will be used</div>
+                  </div>
+                  <button type="button" onClick={() => setPdf(null)} className="text-muted-foreground hover:text-foreground transition p-1">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="mt-2 flex flex-col items-center justify-center gap-2 p-5 border border-dashed border-border hover:border-primary/60 rounded-md cursor-pointer transition group">
+                  <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition" />
+                  <div className="text-sm">Drop PDF or click to upload</div>
+                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Max 8MB · Encrypted in transit</div>
+                  <input type="file" accept="application/pdf" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                </label>
+              )}
+            </div>
+            <div className="h-px bg-border" />
             <div>
               <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Age</label>
               <input type="number" min={14} max={100} value={form.age}
@@ -200,7 +252,7 @@ function LiveDemo() {
                 onChange={(e) => setForm({ ...form, primaryGoal: e.target.value })}
                 className="mt-2 w-full bg-background border border-border rounded-md px-4 py-3 focus:outline-none focus:border-primary transition" />
             </div>
-            <div>
+            <div className={pdf ? "opacity-50 pointer-events-none" : ""}>
               <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex justify-between">
                 <span>Energy today</span><span className="text-primary">{form.energy}/10</span>
               </label>
@@ -208,7 +260,7 @@ function LiveDemo() {
                 onChange={(e) => setForm({ ...form, energy: Number(e.target.value) })}
                 className="mt-2 w-full accent-primary" />
             </div>
-            <div>
+            <div className={pdf ? "opacity-50 pointer-events-none" : ""}>
               <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex justify-between">
                 <span>Avg sleep (hrs)</span><span className="text-primary">{form.sleep}</span>
               </label>
@@ -227,7 +279,9 @@ function LiveDemo() {
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
               className="w-full py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2">
-              {mutation.isPending ? (<><Loader2 className="w-4 h-4 animate-spin" /> Decoding your biology…</>) : (<>Generate my protocol <ArrowRight className="w-4 h-4" /></>)}
+              {mutation.isPending
+                ? (<><Loader2 className="w-4 h-4 animate-spin" /> {pdf ? "Reading your blood test…" : "Simulating biology…"}</>)
+                : (<>{pdf ? "Analyze my real blood test" : "Simulate my protocol"} <ArrowRight className="w-4 h-4" /></>)}
             </button>
           </div>
 
