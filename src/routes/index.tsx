@@ -1,26 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Activity, Beaker, Dna, Zap, Shield, Check, Loader2, Sparkles, Clock, TrendingUp, Upload, FileText, X } from "lucide-react";
+import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target } from "lucide-react";
 import { toast } from "sonner";
-import heroDrop from "@/assets/hero-drop.jpg";
-import { generateProtocol, analyzeBloodTest, joinWaitlist, type ProtocolResult } from "@/lib/lazarus.functions";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import heroImg from "@/assets/prodigy-hero.jpg";
+import { tutorReply, joinWaitlist } from "@/lib/prodigy.functions";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
-  component: LazarusLanding,
+  component: ProdigyLanding,
 });
 
-function LazarusLanding() {
+function ProdigyLanding() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Toaster theme="dark" position="top-center" />
       <Nav />
       <Hero />
       <Ticker />
-      <HowItWorks />
-      <LiveDemo />
-      <Markers />
+      <TwoSigma />
+      <LiveTutor />
+      <Subjects />
       <Pricing />
       <Waitlist />
       <Footer />
@@ -34,18 +37,19 @@ function Nav() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-            <Dna className="w-5 h-5 text-primary-foreground" strokeWidth={2.5} />
+            <GraduationCap className="w-5 h-5 text-primary-foreground" strokeWidth={2.5} />
           </div>
-          <span className="font-semibold tracking-tight text-lg">LAZARUS</span>
+          <span className="font-semibold tracking-tight text-lg">PRODIGY</span>
           <span className="ml-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border border-primary/40 text-primary rounded">Beta</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          <a href="#how" className="hover:text-foreground transition">How it works</a>
-          <a href="#demo" className="hover:text-foreground transition">Live demo</a>
+          <a href="#method" className="hover:text-foreground transition">Method</a>
+          <a href="#tutor" className="hover:text-foreground transition">Try tutor</a>
+          <a href="#subjects" className="hover:text-foreground transition">Subjects</a>
           <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
         </nav>
         <a href="#waitlist" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
-          Get early access
+          Get $10/mo access
         </a>
       </div>
     </header>
@@ -60,39 +64,39 @@ function Hero() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-xs font-mono text-primary mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-primary pulse-ring" />
-            LIVE • 12,847 on waitlist
+            LIVE • 24,109 kids learning
           </div>
           <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
-            Your blood.<br />
-            <span className="text-primary text-glow">Decoded.</span><br />
-            Your life. Extended.
+            An MIT tutor.<br />
+            <span className="text-primary text-glow">For every kid.</span><br />
+            For $10 a month.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-md leading-relaxed">
-            Upload any blood test PDF. Our AI reads your actual values and builds a longevity protocol tuned to <em>your</em> biology — trained on 400,000 patient outcomes. Results in 20 seconds.
+            Prodigy solves Bloom's 2-sigma problem. An AI tutor that finds <em>exactly</em> where your child is stuck, draws it out, and pulls them to the top 1% — one Socratic question at a time.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <a href="#demo" className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition">
-              Try the AI now <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
+            <a href="#tutor" className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition">
+              Try the tutor now <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
             </a>
-            <a href="#how" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border border-border rounded-md font-medium hover:bg-surface transition">
+            <a href="#method" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border border-border rounded-md font-medium hover:bg-surface transition">
               How it works
             </a>
           </div>
           <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground font-mono">
-            <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> CLIA-certified lab</div>
-            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> HIPAA compliant</div>
+            <div className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5" /> Top 1% PISA outcomes</div>
+            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> COPPA compliant · Ages 6–18</div>
           </div>
         </div>
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-          <img src={heroDrop} alt="Bioluminescent blood droplet" className="relative w-full aspect-square object-cover rounded-2xl border border-border" width={800} height={800} />
+          <img src={heroImg} alt="Constellation of mathematical and physics diagrams glowing in gold" className="relative w-full aspect-square object-cover rounded-2xl border border-border" width={1024} height={1024} />
           <div className="absolute -bottom-4 -left-4 bg-surface border border-border rounded-lg p-3 backdrop-blur-xl">
-            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">Biological Age</div>
-            <div className="text-2xl font-semibold text-primary text-glow">−4.2 yrs</div>
+            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">Avg score lift</div>
+            <div className="text-2xl font-semibold text-primary text-glow">+2.0σ</div>
           </div>
           <div className="absolute -top-4 -right-4 bg-surface border border-border rounded-lg p-3 backdrop-blur-xl">
-            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">VO₂ max</div>
-            <div className="text-2xl font-semibold text-primary text-glow">+18%</div>
+            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">Cost vs human tutor</div>
+            <div className="text-2xl font-semibold text-primary text-glow">1/400</div>
           </div>
         </div>
       </div>
@@ -101,7 +105,7 @@ function Hero() {
 }
 
 function Ticker() {
-  const items = ["APOE-e4", "HbA1c 5.1", "hs-CRP ↓", "VO₂max 52", "Vit D 68", "ApoB 74", "Testosterone", "Omega-3 index", "HRV 89", "Fasting insulin", "Lp(a) low", "GlycanAge"];
+  const items = ["Calculus", "Newtonian mechanics", "Essay structure", "Linear algebra", "Recursion", "Organic chemistry", "Probability", "Rhetoric", "Quantum basics", "Number theory", "Data structures", "Trigonometry"];
   return (
     <div className="border-y border-border py-4 overflow-hidden bg-surface/30">
       <div className="flex ticker gap-12 whitespace-nowrap font-mono text-sm text-muted-foreground">
@@ -115,18 +119,19 @@ function Ticker() {
   );
 }
 
-function HowItWorks() {
+function TwoSigma() {
   const steps = [
-    { icon: Beaker, title: "Prick.", body: "One finger. One drop. The Lazarus device (ships free with subscription) reads 40 biomarkers in 15 minutes — no lab, no needle, no wait." },
-    { icon: Dna, title: "Decode.", body: "Your data hits our AI trained on 400,000 anonymized patient outcomes. It maps your inflammation, hormones, metabolism, and epigenetic age." },
-    { icon: Zap, title: "Act.", body: "You get a protocol updated weekly: what to eat, what to supplement (dose + timing), how to train, when to sleep. It evolves with every test." },
+    { icon: Target, title: "Diagnose.", body: "In under 3 questions, Prodigy pinpoints the exact concept your child is missing — not what the worksheet says they got wrong, but the underlying misconception." },
+    { icon: Brain, title: "Socratic loop.", body: "No answer-dumping. Prodigy asks the smallest question that unlocks the next step. Your child does the thinking. That's how mastery is built." },
+    { icon: Zap, title: "Mastery.", body: "Every session ends when the concept is genuinely internalized — checked with novel problems the AI generates on the spot. Not memorization. Understanding." },
   ];
   return (
-    <section id="how" className="py-24 md:py-32">
+    <section id="method" className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-16">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">01 · The Loop</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">A closed loop between your biology and your behavior.</h2>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">01 · The 2-sigma method</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Benjamin Bloom proved it in 1984. We just built it.</h2>
+          <p className="mt-4 text-muted-foreground text-lg">Kids with 1-on-1 tutors outperform 98% of classroom peers. The catch: personal tutors cost $80/hr. Prodigy delivers the same pedagogy for $10/month.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
           {steps.map((s, i) => (
@@ -147,149 +152,125 @@ function HowItWorks() {
   );
 }
 
-function LiveDemo() {
-  const [form, setForm] = useState({ age: 32, sex: "male" as "male" | "female" | "other", primaryGoal: "Extend healthspan and sharpen mental clarity", energy: 6, sleep: 6.5, concerns: "" });
-  const [result, setResult] = useState<ProtocolResult | null>(null);
-  const [pdf, setPdf] = useState<{ name: string; base64: string } | null>(null);
+type Subject = "math" | "physics" | "writing" | "code";
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
+const SUBJECT_META: Record<Subject, { label: string; icon: typeof Sigma; seed: string; placeholder: string }> = {
+  math: { label: "Math", icon: Sigma, seed: "I don't get why the derivative of x² is 2x. Where does the 2 come from?", placeholder: "Ask a math question…" },
+  physics: { label: "Physics", icon: Atom, seed: "Why does a heavier object fall at the same speed as a lighter one?", placeholder: "Ask a physics question…" },
+  writing: { label: "Writing", icon: PenLine, seed: "I have to write an essay about why lying is sometimes okay. I don't know how to start.", placeholder: "Paste your writing or ask…" },
+  code: { label: "Code", icon: Code2, seed: "My Python code is supposed to reverse a list but it prints the same list. Help.", placeholder: "Paste your code or ask…" },
+};
+
+function LiveTutor() {
+  const [subject, setSubject] = useState<Subject>("math");
+  const [grade, setGrade] = useState("8th grade");
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      if (pdf) {
-        return await analyzeBloodTest({
-          data: {
-            age: form.age,
-            sex: form.sex,
-            primaryGoal: form.primaryGoal,
-            concerns: form.concerns,
-            pdfBase64: pdf.base64,
-            filename: pdf.name,
-          },
-        });
-      }
-      return await generateProtocol({ data: form });
+    mutationFn: async (userText: string) => {
+      const next: ChatMsg[] = [...messages, { role: "user", content: userText }];
+      setMessages(next);
+      setInput("");
+      const res = await tutorReply({ data: { subject, grade, messages: next } });
+      setMessages([...next, { role: "assistant", content: res.reply }]);
+      return res;
     },
-    onSuccess: (data) => {
-      setResult(data);
-      setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    },
-    onError: (e: Error) => toast.error(e.message || "The AI is warming up. Try again in a moment."),
+    onError: (e: Error) => toast.error(e.message || "The tutor is thinking too hard. Try again."),
   });
 
-  const handleFile = async (file: File) => {
-    if (file.type !== "application/pdf") { toast.error("Please upload a PDF file."); return; }
-    if (file.size > 8 * 1024 * 1024) { toast.error("PDF too large. Max 8MB."); return; }
-    const buf = await file.arrayBuffer();
-    let binary = "";
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-    const base64 = btoa(binary);
-    setPdf({ name: file.name, base64 });
-    toast.success(`${file.name} loaded. AI will analyze the real values.`);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, mutation.isPending]);
+
+  const send = (text: string) => {
+    const t = text.trim();
+    if (!t || mutation.isPending) return;
+    mutation.mutate(t);
+  };
+
+  const changeSubject = (s: Subject) => {
+    setSubject(s);
+    setMessages([]);
   };
 
   return (
-    <section id="demo" className="py-24 md:py-32 border-t border-border relative">
+    <section id="tutor" className="py-24 md:py-32 border-t border-border relative">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5" /> 02 · Live AI Demo
+            <Sparkles className="w-3.5 h-3.5" /> 02 · Live Tutor
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Upload your blood test. Get your protocol.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">Drop any PDF blood test (Maccabi, Clalit, Quest, LabCorp — any lab). Our AI reads your actual values, flags what matters, and builds a longevity protocol in 20 seconds. No PDF? Skip the upload and we'll simulate from your profile.</p>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Ask Prodigy anything. Right now.</h2>
+          <p className="mt-4 text-muted-foreground text-lg">Pick a subject, tell us the grade level, and watch the tutor work. It won't just give the answer — it'll teach you.</p>
         </div>
 
-        <div className="grid md:grid-cols-[1fr_1.4fr] gap-6">
-          {/* Form */}
-          <div className="bg-surface border border-border rounded-xl p-6 md:p-8 space-y-5 h-fit sticky top-24">
+        <div className="grid md:grid-cols-[280px_1fr] gap-6">
+          {/* Controls */}
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-5 h-fit md:sticky md:top-24">
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5" /> Blood test PDF
-                <span className="ml-auto text-[10px] text-primary">Recommended</span>
-              </label>
-              {pdf ? (
-                <div className="mt-2 flex items-center gap-3 p-3 bg-primary/10 border border-primary/40 rounded-md">
-                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{pdf.name}</div>
-                    <div className="text-[10px] font-mono text-primary uppercase tracking-widest">Real values will be used</div>
-                  </div>
-                  <button type="button" onClick={() => setPdf(null)} className="text-muted-foreground hover:text-foreground transition p-1">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="mt-2 flex flex-col items-center justify-center gap-2 p-5 border border-dashed border-border hover:border-primary/60 rounded-md cursor-pointer transition group">
-                  <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition" />
-                  <div className="text-sm">Drop PDF or click to upload</div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Max 8MB · Encrypted in transit</div>
-                  <input type="file" accept="application/pdf" className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-                </label>
-              )}
-            </div>
-            <div className="h-px bg-border" />
-            <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Age</label>
-              <input type="number" min={14} max={100} value={form.age}
-                onChange={(e) => setForm({ ...form, age: Number(e.target.value) })}
-                className="mt-2 w-full bg-background border border-border rounded-md px-4 py-3 focus:outline-none focus:border-primary transition" />
-            </div>
-            <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Sex</label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {(["male", "female", "other"] as const).map((s) => (
-                  <button key={s} onClick={() => setForm({ ...form, sex: s })}
-                    className={`py-2.5 rounded-md border text-sm capitalize transition ${form.sex === s ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-muted-foreground"}`}>
-                    {s}
-                  </button>
-                ))}
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Subject</label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {(Object.keys(SUBJECT_META) as Subject[]).map((s) => {
+                  const Meta = SUBJECT_META[s];
+                  const Icon = Meta.icon;
+                  return (
+                    <button key={s} onClick={() => changeSubject(s)}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border transition ${subject === s ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-muted-foreground"}`}>
+                      <Icon className="w-4 h-4" />
+                      <span className="text-xs">{Meta.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Primary goal</label>
-              <input value={form.primaryGoal}
-                onChange={(e) => setForm({ ...form, primaryGoal: e.target.value })}
-                className="mt-2 w-full bg-background border border-border rounded-md px-4 py-3 focus:outline-none focus:border-primary transition" />
-            </div>
-            <div className={pdf ? "opacity-50 pointer-events-none" : ""}>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex justify-between">
-                <span>Energy today</span><span className="text-primary">{form.energy}/10</span>
-              </label>
-              <input type="range" min={1} max={10} value={form.energy}
-                onChange={(e) => setForm({ ...form, energy: Number(e.target.value) })}
-                className="mt-2 w-full accent-primary" />
-            </div>
-            <div className={pdf ? "opacity-50 pointer-events-none" : ""}>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex justify-between">
-                <span>Avg sleep (hrs)</span><span className="text-primary">{form.sleep}</span>
-              </label>
-              <input type="range" min={3} max={12} step={0.5} value={form.sleep}
-                onChange={(e) => setForm({ ...form, sleep: Number(e.target.value) })}
-                className="mt-2 w-full accent-primary" />
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Grade / Level</label>
+              <select value={grade} onChange={(e) => setGrade(e.target.value)}
+                className="mt-2 w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:border-primary transition">
+                {["2nd grade", "4th grade", "6th grade", "8th grade", "10th grade", "12th grade", "College freshman", "Adult learner"].map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Concerns (optional)</label>
-              <textarea value={form.concerns} rows={2}
-                onChange={(e) => setForm({ ...form, concerns: e.target.value })}
-                placeholder="brain fog, joint pain, low libido..."
-                className="mt-2 w-full bg-background border border-border rounded-md px-4 py-3 focus:outline-none focus:border-primary transition resize-none" />
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Quick prompts</label>
+              <button onClick={() => send(SUBJECT_META[subject].seed)}
+                disabled={mutation.isPending}
+                className="mt-2 w-full text-left text-xs p-3 bg-background border border-border rounded-md hover:border-primary transition text-muted-foreground hover:text-foreground disabled:opacity-50">
+                {SUBJECT_META[subject].seed}
+              </button>
             </div>
-            <button
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
-              className="w-full py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2">
-              {mutation.isPending
-                ? (<><Loader2 className="w-4 h-4 animate-spin" /> {pdf ? "Reading your blood test…" : "Simulating biology…"}</>)
-                : (<>{pdf ? "Analyze my real blood test" : "Simulate my protocol"} <ArrowRight className="w-4 h-4" /></>)}
-            </button>
+            {messages.length > 0 && (
+              <button onClick={() => setMessages([])}
+                className="w-full py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground border border-border rounded-md transition">
+                Reset session
+              </button>
+            )}
           </div>
 
-          {/* Result */}
-          <div id="result" className="min-h-[500px]">
-            {!result && !mutation.isPending && <EmptyState />}
-            {mutation.isPending && <LoadingState />}
-            {result && <ProtocolCard result={result} />}
+          {/* Chat */}
+          <div className="bg-surface border border-border rounded-xl flex flex-col h-[600px] overflow-hidden">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5">
+              {messages.length === 0 && !mutation.isPending && <TutorEmptyState subject={subject} />}
+              {messages.map((m, i) => <Bubble key={i} msg={m} />)}
+              {mutation.isPending && <TypingBubble />}
+            </div>
+            <form
+              onSubmit={(e) => { e.preventDefault(); send(input); }}
+              className="border-t border-border p-4 flex gap-2">
+              <input value={input} onChange={(e) => setInput(e.target.value)}
+                placeholder={SUBJECT_META[subject].placeholder}
+                disabled={mutation.isPending}
+                className="flex-1 bg-background border border-border rounded-md px-4 py-3 text-sm focus:outline-none focus:border-primary transition disabled:opacity-50" />
+              <button type="submit" disabled={mutation.isPending || !input.trim()}
+                className="px-5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2">
+                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -297,148 +278,77 @@ function LiveDemo() {
   );
 }
 
-function EmptyState() {
+function TutorEmptyState({ subject }: { subject: Subject }) {
+  const Meta = SUBJECT_META[subject];
+  const Icon = Meta.icon;
   return (
-    <div className="h-full min-h-[500px] border border-dashed border-border rounded-xl flex flex-col items-center justify-center text-center p-8">
+    <div className="h-full flex flex-col items-center justify-center text-center py-16 px-4">
       <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-4">
-        <Activity className="w-7 h-7 text-primary" />
+        <Icon className="w-7 h-7 text-primary" />
       </div>
-      <h4 className="font-display text-xl font-semibold">Awaiting your profile</h4>
-      <p className="text-muted-foreground mt-2 max-w-sm">Fill the panel on the left. In seconds, Lazarus will estimate your biological age, flag 6 markers, and build your protocol.</p>
+      <h4 className="font-display text-xl font-semibold">Your Prodigy tutor is ready</h4>
+      <p className="text-muted-foreground mt-2 max-w-sm text-sm">Type a question, paste a problem, or use the quick prompt on the left. The tutor will guide — not just answer.</p>
     </div>
   );
 }
 
-function LoadingState() {
-  const stages = ["Estimating biomarkers…", "Cross-referencing 400k outcomes…", "Composing supplement stack…", "Finalizing weekly protocol…"];
-  const [stage, setStage] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setStage((s) => (s + 1) % stages.length), 1200);
-    return () => clearInterval(id);
-  }, [stages.length]);
+function Bubble({ msg }: { msg: ChatMsg }) {
+  const isUser = msg.role === "user";
   return (
-    <div className="h-full min-h-[500px] border border-primary/30 rounded-xl flex flex-col items-center justify-center text-center p-8 bg-primary/5">
-      <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-      <div className="font-mono text-sm text-primary">{stages[stage]}</div>
-    </div>
-  );
-}
-
-function ProtocolCard({ result }: { result: ProtocolResult }) {
-  const diff = result.chronoAge - result.bioAge;
-  return (
-    <div className="space-y-4">
-      {/* Bio age */}
-      <div className="bg-surface border border-border rounded-xl p-6 relative overflow-hidden">
-        <div className="absolute inset-0 radial-fade" />
-        <div className="relative grid grid-cols-2 gap-6">
-          <div>
-            <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Chronological age</div>
-            <div className="font-display text-5xl font-semibold mt-2">{result.chronoAge}</div>
+    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+      <div className={`w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center text-xs font-mono ${isUser ? "bg-surface-2 border border-border" : "bg-primary/10 border border-primary/40 text-primary"}`}>
+        {isUser ? "YOU" : <GraduationCap className="w-4 h-4" />}
+      </div>
+      <div className={`max-w-[85%] rounded-xl px-4 py-3 ${isUser ? "bg-primary/10 border border-primary/30 text-foreground" : "bg-background border border-border"}`}>
+        {isUser ? (
+          <div className="whitespace-pre-wrap leading-relaxed text-sm">{msg.content}</div>
+        ) : (
+          <div className="prose-tutor text-sm">
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</ReactMarkdown>
           </div>
-          <div>
-            <div className="text-xs font-mono uppercase tracking-widest text-primary">Biological age</div>
-            <div className="font-display text-5xl font-semibold mt-2 text-primary text-glow">{result.bioAge}</div>
-            <div className={`text-xs font-mono mt-1 ${diff >= 0 ? "text-primary" : "text-destructive"}`}>{diff >= 0 ? `−${diff}` : `+${Math.abs(diff)}`} yrs</div>
-          </div>
-        </div>
-        <p className="relative mt-6 text-foreground/90 leading-relaxed">{result.summary}</p>
+        )}
       </div>
-
-      {/* Markers */}
-      <div className="bg-surface border border-border rounded-xl p-6">
-        <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-4">Estimated markers</div>
-        <div className="grid grid-cols-2 gap-3">
-          {result.markers.map((m, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 bg-background rounded-md border border-border">
-              <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${m.status === "optimal" ? "bg-primary" : m.status === "high" ? "bg-chart-3" : "bg-chart-5"}`} />
-              <div className="min-w-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium truncate">{m.name}</span>
-                  <span className="font-mono text-xs text-primary flex-shrink-0">{m.value}</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{m.note}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Protocol sections */}
-      <ProtocolSection title="Nutrition" items={result.protocol.nutrition} />
-      <div className="bg-surface border border-border rounded-xl p-6">
-        <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">Supplement stack</div>
-        <div className="space-y-3">
-          {result.protocol.supplements.map((s, i) => (
-            <div key={i} className="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
-              <div className="w-8 h-8 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center font-mono text-xs text-primary flex-shrink-0">{i + 1}</div>
-              <div className="flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">{s.name}</span>
-                  <span className="font-mono text-xs text-primary">{s.dose}</span>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">{s.why}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <ProtocolSection title="Training" items={result.protocol.training} />
-      <ProtocolSection title="Lifestyle" items={result.protocol.lifestyle} />
-
-      <div className="bg-primary/10 border border-primary/40 rounded-xl p-6 flex items-start gap-4">
-        <TrendingUp className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-        <div>
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-1">Projected 7-day impact</div>
-          <div className="text-foreground leading-relaxed">{result.weeklyImpact}</div>
-        </div>
-      </div>
-
-      <a href="#waitlist" className="block w-full py-4 text-center bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition">
-        Get the real thing → Join early access
-      </a>
     </div>
   );
 }
 
-function ProtocolSection({ title, items }: { title: string; items: string[] }) {
+function TypingBubble() {
   return (
-    <div className="bg-surface border border-border rounded-xl p-6">
-      <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">{title}</div>
-      <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <Check className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
-            <span className="text-foreground/90 leading-relaxed">{item}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="flex gap-3">
+      <div className="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center bg-primary/10 border border-primary/40 text-primary">
+        <GraduationCap className="w-4 h-4" />
+      </div>
+      <div className="bg-background border border-border rounded-xl px-4 py-3 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "0ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "150ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "300ms" }} />
+      </div>
     </div>
   );
 }
 
-function Markers() {
-  const rows = [
-    ["Metabolic", "HbA1c · Fasting insulin · HOMA-IR · Triglycerides · ApoB · Lp(a)"],
-    ["Hormonal", "Total & Free Testosterone · SHBG · Estradiol · Cortisol · DHEA-S · TSH · Free T3/T4"],
-    ["Inflammatory", "hs-CRP · Homocysteine · Ferritin · Fibrinogen · GlycA"],
-    ["Nutritional", "Vit D · Vit B12 · Folate · Omega-3 index · Magnesium RBC · Zinc"],
-    ["Epigenetic", "GrimAge · PhenoAge · DunedinPACE · Telomere length"],
-    ["Cardiac", "NT-proBNP · Troponin-I · Lipoprotein-a"],
+function Subjects() {
+  const rows: [string, string][] = [
+    ["Math", "Arithmetic · Algebra · Geometry · Trig · Precalc · Calculus · Linear algebra · Statistics · Number theory · Olympiad training"],
+    ["Physics", "Mechanics · Electromagnetism · Thermodynamics · Waves · Optics · Modern & quantum · AP/IB/A-level prep"],
+    ["Writing", "Structure · Argument · Voice · Grammar · SAT/ACT essay · College application · Creative fiction"],
+    ["Code", "Python · JavaScript · Data structures · Algorithms · USACO training · Intro to ML"],
+    ["Chemistry", "General · Organic · AP prep · Stoichiometry · Reaction mechanisms"],
+    ["History & humanities", "Analytical reading · Thesis crafting · Primary source analysis · Debate coaching"],
   ];
   return (
-    <section className="py-24 md:py-32 border-t border-border">
+    <section id="subjects" className="py-24 md:py-32 border-t border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">03 · The Panel</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">40 biomarkers. Every 30 days.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">The kind of panel that costs $2,400 in a longevity clinic. From your couch, for the price of a Netflix subscription.</p>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">03 · Curriculum</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Every subject. Every level. One tutor.</h2>
+          <p className="mt-4 text-muted-foreground text-lg">From "why is the sky blue" to "prove the Riemann hypothesis" (well — try). Prodigy scales from age 6 to olympiad prep, and remembers your kid across every session.</p>
         </div>
         <div className="border border-border rounded-xl overflow-hidden">
           {rows.map(([cat, list], i) => (
-            <div key={i} className={`grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 p-5 ${i > 0 ? "border-t border-border" : ""} hover:bg-surface/50 transition`}>
+            <div key={i} className={`grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 p-5 ${i > 0 ? "border-t border-border" : ""} hover:bg-surface/50 transition`}>
               <div className="font-mono text-xs uppercase tracking-widest text-primary">{cat}</div>
-              <div className="text-foreground/80 font-mono text-sm leading-relaxed">{list}</div>
+              <div className="text-foreground/80 text-sm leading-relaxed">{list}</div>
             </div>
           ))}
         </div>
@@ -449,16 +359,16 @@ function Markers() {
 
 function Pricing() {
   const tiers = [
-    { name: "Free", price: "$0", tag: "Track & learn", features: ["AI protocol from questionnaire", "Longevity library", "Monthly newsletter"], cta: "Start free", primary: false },
-    { name: "Pro", price: "$49", per: "/mo", tag: "Most popular", features: ["Lazarus device (free)", "Monthly 40-marker panel", "Weekly-updated protocol", "Supplement auto-ship discounts", "1-on-1 AI coach"], cta: "Get Pro", primary: true },
-    { name: "Legacy", price: "$1,999", per: "one-time", tag: "For your family", features: ["Everything in Pro (lifetime)", "Digital biological twin preserved", "Family longevity dashboard", "Priority clinical review"], cta: "Reserve Legacy", primary: false },
+    { name: "Curious", price: "$0", tag: "For explorers", features: ["10 tutor sessions/month", "All subjects", "Basic progress tracking"], cta: "Start free", primary: false },
+    { name: "Prodigy", price: "$10", per: "/mo per child", tag: "Most families", features: ["Unlimited tutor sessions", "Weekly mastery reports for parents", "Custom curriculum path", "Olympiad & competition prep", "PISA / SAT / ACT drills"], cta: "Start Prodigy", primary: true },
+    { name: "Family", price: "$25", per: "/mo · 4 kids", tag: "For siblings", features: ["Everything in Prodigy × 4 kids", "Cross-child insights for parents", "Priority support", "Human tutor escalation (1hr/mo)"], cta: "Get Family", primary: false },
   ];
   return (
     <section id="pricing" className="py-24 md:py-32 border-t border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">04 · Access</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Longevity, priced like software.</h2>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">04 · Pricing</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">A human tutor is $80/hr. Prodigy is $10/month.</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {tiers.map((t) => (
@@ -496,7 +406,7 @@ function Waitlist() {
     mutationFn: async () => await joinWaitlist({ data: { email, goal } }),
     onSuccess: (r) => {
       setDone(true);
-      toast.success(r.duplicate ? "You're already in. Position saved." : "You're in. Position #12,848.");
+      toast.success(r.duplicate ? "You're already in. Position saved." : "You're in. Position #24,110.");
     },
     onError: (e: Error) => toast.error(e.message || "Something went wrong. Try again."),
   });
@@ -505,9 +415,9 @@ function Waitlist() {
     <section id="waitlist" className="py-24 md:py-32 border-t border-border relative overflow-hidden">
       <div className="absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
       <div className="relative max-w-2xl mx-auto px-6 text-center">
-        <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">05 · Join the first cohort</div>
-        <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight">The first 10,000 <span className="text-primary text-glow">rewrite aging.</span></h2>
-        <p className="mt-6 text-muted-foreground text-lg">Devices ship Q2 2026. Founders get lifetime Pro at $19/mo — a 60% discount forever. Only <span className="text-primary font-mono">2,153 spots</span> left.</p>
+        <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">05 · Founding families</div>
+        <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight">Raise a <span className="text-primary text-glow">prodigy.</span></h2>
+        <p className="mt-6 text-muted-foreground text-lg">First 10,000 families get lifetime Prodigy at <span className="text-primary font-mono">$5/month per child</span> — half off, forever. Only <span className="text-primary font-mono">3,472 spots</span> left.</p>
 
         {done ? (
           <div className="mt-10 inline-flex items-center gap-3 px-6 py-4 bg-primary/10 border border-primary/40 rounded-xl">
@@ -516,16 +426,16 @@ function Waitlist() {
           </div>
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="mt-10 space-y-3 max-w-md mx-auto">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@futureofmedicine.com"
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@raisingaprodigy.com"
               className="w-full bg-surface border border-border rounded-md px-4 py-3.5 focus:outline-none focus:border-primary transition" />
-            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What's your #1 goal? (optional)"
+            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Kid's age & biggest struggle (optional)"
               className="w-full bg-surface border border-border rounded-md px-4 py-3.5 focus:outline-none focus:border-primary transition" />
             <button type="submit" disabled={mutation.isPending}
               className="w-full py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2">
-              {mutation.isPending ? (<><Loader2 className="w-4 h-4 animate-spin" /> Reserving your spot…</>) : (<>Claim founder pricing <ArrowRight className="w-4 h-4" /></>)}
+              {mutation.isPending ? (<><Loader2 className="w-4 h-4 animate-spin" /> Reserving your spot…</>) : (<>Claim founding-family pricing <ArrowRight className="w-4 h-4" /></>)}
             </button>
             <p className="text-xs text-muted-foreground font-mono flex items-center justify-center gap-2 pt-2">
-              <Clock className="w-3 h-3" /> No spam. No selling data. Ever.
+              <Clock className="w-3 h-3" /> No spam. No selling data. COPPA compliant.
             </p>
           </form>
         )}
@@ -540,13 +450,13 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-            <Dna className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
+            <GraduationCap className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
           </div>
-          <span className="font-semibold tracking-tight">LAZARUS</span>
-          <span className="text-xs text-muted-foreground ml-2 font-mono">© 2026 · Rewriting aging.</span>
+          <span className="font-semibold tracking-tight">PRODIGY</span>
+          <span className="text-xs text-muted-foreground ml-2 font-mono">© 2026 · Raise a prodigy.</span>
         </div>
         <div className="text-xs text-muted-foreground font-mono">
-          Not a medical device. Not diagnostic. Consult a physician.
+          Ages 6–18 · COPPA compliant · Not a replacement for accredited schooling.
         </div>
       </div>
     </footer>
