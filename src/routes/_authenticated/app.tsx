@@ -1,0 +1,534 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  GraduationCap,
+  Plus,
+  Send,
+  Loader2,
+  Trash2,
+  LogOut,
+  Sigma,
+  Atom,
+  PenLine,
+  Code2,
+  Target,
+  Sparkles,
+  Menu,
+  X,
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  listConversations,
+  createConversation,
+  deleteConversation,
+  getConversation,
+  sendMessage,
+  getMyProfile,
+  updateMyProfile,
+  listStuckTopics,
+} from "@/lib/prodigy.functions";
+
+export const Route = createFileRoute("/_authenticated/app")({
+  component: TutorApp,
+});
+
+type Subject = "math" | "physics" | "writing" | "code";
+const SUBJECTS: { id: Subject; label: string; labelHe: string; icon: typeof Sigma }[] = [
+  { id: "math", label: "Math", labelHe: "מתמטיקה", icon: Sigma },
+  { id: "physics", label: "Physics", labelHe: "פיזיקה", icon: Atom },
+  { id: "writing", label: "Writing", labelHe: "כתיבה", icon: PenLine },
+  { id: "code", label: "Code", labelHe: "קוד", icon: Code2 },
+];
+
+function TutorApp() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  const fetchProfile = useServerFn(getMyProfile);
+  const fetchConvs = useServerFn(listConversations);
+  const fetchStuck = useServerFn(listStuckTopics);
+  const fetchConv = useServerFn(getConversation);
+  const createConvFn = useServerFn(createConversation);
+  const deleteConvFn = useServerFn(deleteConversation);
+  const sendMsgFn = useServerFn(sendMessage);
+  const updateProfileFn = useServerFn(updateMyProfile);
+
+  const profile = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const convs = useQuery({ queryKey: ["conversations"], queryFn: () => fetchConvs() });
+  const stuck = useQuery({ queryKey: ["stuck"], queryFn: () => fetchStuck() });
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    if (!activeId && convs.data && convs.data.length > 0) {
+      setActiveId(convs.data[0].id);
+    }
+  }, [convs.data, activeId]);
+
+  // First-time users: force profile setup
+  useEffect(() => {
+    if (profile.data && (!profile.data.grade || !profile.data.display_name)) {
+      setShowProfile(true);
+    }
+  }, [profile.data]);
+
+  const activeConv = useQuery({
+    queryKey: ["conversation", activeId],
+    queryFn: () => fetchConv({ data: { id: activeId! } }),
+    enabled: !!activeId,
+  });
+
+  const [pendingReply, setPendingReply] = useState(false);
+
+  const isHe = profile.data?.locale === "he";
+
+  const newConv = useMutation({
+    mutationFn: (subject: Subject) =>
+      createConvFn({
+        data: {
+          subject,
+          grade: profile.data?.grade || "middle school",
+          locale: (profile.data?.locale as "en" | "he") || "en",
+        },
+      }),
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      setActiveId(row.id);
+      setSidebarOpen(false);
+    },
+  });
+
+  const delConv = useMutation({
+    mutationFn: (id: string) => deleteConvFn({ data: { id } }),
+    onSuccess: (_r, id) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      if (activeId === id) setActiveId(null);
+    },
+  });
+
+  async function handleSignOut() {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/", replace: true });
+  }
+
+  return (
+    <div className="h-screen bg-background text-foreground flex overflow-hidden" dir={isHe ? "rtl" : "ltr"}>
+      <Toaster theme="dark" position="top-center" />
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed md:relative inset-y-0 ${isHe ? "right-0" : "left-0"} z-40 w-72 bg-card border-${isHe ? "l" : "r"} border-border flex flex-col transition-transform ${
+          sidebarOpen ? "translate-x-0" : isHe ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
+            </div>
+            <span className="font-semibold tracking-tight">PRODIGY</span>
+          </Link>
+          <button className="md:hidden p-1" onClick={() => setSidebarOpen(false)}>
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-3">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1">
+            {isHe ? "התחל שיחה" : "New session"}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {SUBJECTS.map((s) => {
+              const Icon = s.icon;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => newConv.mutate(s.id)}
+                  disabled={newConv.isPending}
+                  className="flex flex-col items-center gap-1 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition text-xs disabled:opacity-50"
+                >
+                  <Icon className="w-4 h-4 text-primary" />
+                  <span>{isHe ? s.labelHe : s.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 pb-3">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1 mt-2">
+            {isHe ? "היסטוריה" : "Sessions"}
+          </div>
+          {convs.isLoading && <div className="text-xs text-muted-foreground px-2">…</div>}
+          {convs.data?.length === 0 && (
+            <div className="text-xs text-muted-foreground px-2">
+              {isHe ? "אין שיחות עדיין" : "No sessions yet"}
+            </div>
+          )}
+          <div className="space-y-1">
+            {convs.data?.map((c) => {
+              const Icon = SUBJECTS.find((s) => s.id === c.subject)?.icon || Sigma;
+              const isActive = c.id === activeId;
+              return (
+                <div
+                  key={c.id}
+                  className={`group flex items-center gap-2 rounded-md px-2 py-2 cursor-pointer transition ${
+                    isActive ? "bg-primary/10 border border-primary/40" : "hover:bg-accent"
+                  }`}
+                  onClick={() => {
+                    setActiveId(c.id);
+                    setSidebarOpen(false);
+                  }}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0 text-primary" />
+                  <span className="flex-1 text-sm truncate">{c.title}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      delConv.mutate(c.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {stuck.data && stuck.data.length > 0 && (
+            <>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1 mt-6 flex items-center gap-1">
+                <Target className="w-3 h-3" /> {isHe ? "נושאים תקועים" : "Stuck topics"}
+              </div>
+              <div className="space-y-1">
+                {stuck.data.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between px-2 py-1.5 rounded text-xs bg-destructive/5 border border-destructive/20"
+                  >
+                    <span className="truncate">{t.topic}</span>
+                    <span className="font-mono text-destructive">×{t.hit_count}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="p-3 border-t border-border">
+          <button
+            onClick={() => setShowProfile(true)}
+            className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-accent transition"
+          >
+            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
+              {(profile.data?.display_name || "?").slice(0, 1).toUpperCase()}
+            </div>
+            <div className="flex-1 text-left rtl:text-right min-w-0">
+              <div className="text-sm font-medium truncate">
+                {profile.data?.display_name || (isHe ? "פרופיל" : "Profile")}
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate">
+                {profile.data?.grade || (isHe ? "לא הוגדרה כיתה" : "Set grade")}
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="mt-2 w-full flex items-center gap-2 p-2 rounded-md text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition"
+          >
+            <LogOut className="w-4 h-4" />
+            {isHe ? "התנתק" : "Sign out"}
+          </button>
+        </div>
+      </aside>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Main */}
+      <main className="flex-1 flex flex-col min-w-0">
+        <div className="md:hidden p-3 border-b border-border flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)}>
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-semibold">
+            {activeConv.data?.conversation.title || "Prodigy"}
+          </span>
+        </div>
+
+        {!activeId ? (
+          <EmptyState isHe={isHe} onPick={(s) => newConv.mutate(s)} />
+        ) : (
+          <ChatArea
+            key={activeId}
+            conversationId={activeId}
+            data={activeConv.data}
+            isLoading={activeConv.isLoading}
+            isHe={isHe}
+            onSend={async (content) => {
+              setPendingReply(true);
+              try {
+                await sendMsgFn({ data: { conversation_id: activeId, content } });
+                qc.invalidateQueries({ queryKey: ["conversation", activeId] });
+                qc.invalidateQueries({ queryKey: ["conversations"] });
+                qc.invalidateQueries({ queryKey: ["stuck"] });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Failed");
+              } finally {
+                setPendingReply(false);
+              }
+            }}
+            pending={pendingReply}
+          />
+        )}
+      </main>
+
+      {showProfile && profile.data && (
+        <ProfileModal
+          initial={profile.data}
+          isHe={isHe}
+          onClose={() => setShowProfile(false)}
+          onSave={async (patch) => {
+            await updateProfileFn({ data: patch });
+            qc.invalidateQueries({ queryKey: ["profile"] });
+            toast.success(isHe ? "נשמר" : "Saved");
+            setShowProfile(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ isHe, onPick }: { isHe: boolean; onPick: (s: Subject) => void }) {
+  return (
+    <div className="flex-1 flex items-center justify-center p-6">
+      <div className="text-center max-w-md">
+        <Sparkles className="w-10 h-10 mx-auto text-primary mb-4" />
+        <h2 className="text-2xl font-bold">
+          {isHe ? "במה תרצה ללמוד היום?" : "What do you want to learn?"}
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          {isHe
+            ? "בחר מקצוע ואני אתחיל שיחה חדשה. הכל נשמר אוטומטית."
+            : "Pick a subject and I'll start a fresh session. Everything auto-saves."}
+        </p>
+        <div className="grid grid-cols-2 gap-3 mt-6">
+          {SUBJECTS.map((s) => {
+            const Icon = s.icon;
+            return (
+              <button
+                key={s.id}
+                onClick={() => onPick(s.id)}
+                className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition flex flex-col items-center gap-2"
+              >
+                <Icon className="w-6 h-6 text-primary" />
+                <span className="text-sm font-medium">{isHe ? s.labelHe : s.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ConvData = { conversation: { id: string; subject: string; title: string; locale: string; grade: string | null }; messages: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] };
+
+function ChatArea({
+  data,
+  isLoading,
+  isHe,
+  onSend,
+  pending,
+}: {
+  conversationId: string;
+  data: ConvData | undefined;
+  isLoading: boolean;
+  isHe: boolean;
+  onSend: (content: string) => Promise<void>;
+  pending: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [data?.messages?.length, pending]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || pending) return;
+    setInput("");
+    await onSend(text);
+  }
+
+  return (
+    <>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 md:px-8 py-6 space-y-6">
+          {isLoading && <div className="text-sm text-muted-foreground">…</div>}
+          {data?.messages.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-12">
+              {isHe ? "שאל אותי כל דבר." : "Ask me anything."}
+            </div>
+          )}
+          {data?.messages.map((m) => (
+            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                  m.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border"
+                }`}
+              >
+                <div className="prose prose-sm prose-invert max-w-none prose-p:my-2 prose-headings:my-2">
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          ))}
+          {pending && (
+            <div className="flex justify-start">
+              <div className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {isHe ? "המורה חושב…" : "Tutor is thinking…"}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <form onSubmit={submit} className="border-t border-border p-3 md:p-4 bg-card/50">
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={isHe ? "שאל שאלה או הראה מה ניסית…" : "Ask a question or show what you tried…"}
+            className="flex-1 h-12 px-4 rounded-md bg-background border border-border focus:outline-none focus:border-primary text-sm"
+            disabled={pending}
+          />
+          <button
+            type="submit"
+            disabled={pending || !input.trim()}
+            className="h-12 w-12 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition"
+          >
+            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+function ProfileModal({
+  initial,
+  isHe,
+  onSave,
+  onClose,
+}: {
+  initial: { display_name: string | null; grade: string | null; preferred_subject: string | null; locale: string };
+  isHe: boolean;
+  onSave: (p: { display_name?: string; grade?: string; preferred_subject?: Subject; locale?: "en" | "he" }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(initial.display_name || "");
+  const [grade, setGrade] = useState(initial.grade || "");
+  const [locale, setLocale] = useState<"en" | "he">((initial.locale as "en" | "he") || "en");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" dir={isHe ? "rtl" : "ltr"}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6">
+        <h2 className="text-xl font-bold">{isHe ? "פרופיל התלמיד" : "Student profile"}</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          {isHe ? "המורה משתמש בזה כדי להתאים את השפה והרמה." : "The tutor uses this to adapt tone and level."}
+        </p>
+        <div className="space-y-3 mt-4">
+          <label className="block">
+            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              {isHe ? "שם" : "Name"}
+            </span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full h-10 px-3 rounded-md bg-background border border-border text-sm focus:outline-none focus:border-primary"
+              placeholder={isHe ? "עדה" : "Ada"}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              {isHe ? "כיתה / רמה" : "Grade / level"}
+            </span>
+            <input
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className="mt-1 w-full h-10 px-3 rounded-md bg-background border border-border text-sm focus:outline-none focus:border-primary"
+              placeholder={isHe ? "כיתה ז'" : "7th grade"}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              {isHe ? "שפת ברירת מחדל" : "Default language"}
+            </span>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {(["en", "he"] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLocale(l)}
+                  className={`h-10 rounded-md border text-sm ${
+                    locale === l ? "border-primary bg-primary/10 text-primary" : "border-border"
+                  }`}
+                >
+                  {l === "en" ? "English" : "עברית"}
+                </button>
+              ))}
+            </div>
+          </label>
+        </div>
+        <div className="mt-6 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 h-10 rounded-md border border-border text-sm hover:bg-accent"
+          >
+            {isHe ? "ביטול" : "Cancel"}
+          </button>
+          <button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave({
+                  display_name: name.trim() || undefined,
+                  grade: grade.trim() || undefined,
+                  locale,
+                });
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving || !name.trim() || !grade.trim()}
+            className="flex-1 h-10 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isHe ? "שמור" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
