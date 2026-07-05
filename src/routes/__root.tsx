@@ -17,6 +17,7 @@ import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
+import "katex/dist/katex.min.css";
 
 function NotFoundComponent() {
   return (
@@ -83,10 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lazarus — Your Blood, Decoded. Your Life, Extended." },
-      { name: "description", content: "A drop of blood. 40 biomarkers. A protocol built for your body by AI. Take control of your longevity — from home, in 15 minutes." },
-      { property: "og:title", content: "Lazarus — Decode Your Biology" },
-      { property: "og:description", content: "40 biomarkers from one drop of blood. Personalized longevity protocol, updated in real time by AI." },
+      { title: "Prodigy — An MIT Tutor For Every Kid, For $10/Month" },
+      { name: "description", content: "Prodigy is a private AI tutor that solves Bloom's 2-sigma problem. Socratic method, LaTeX math, adapts to any grade level. From $10/month per child." },
+      { property: "og:title", content: "Prodigy — An MIT Tutor For Every Kid" },
+      { property: "og:description", content: "Private AI tutor: Socratic method, olympiad-level rigor, PISA top 1% outcomes. $10/month per child." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
