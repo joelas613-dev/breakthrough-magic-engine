@@ -12,6 +12,7 @@ const TutorInput = z.object({
   subject: z.enum(["math", "physics", "writing", "code"]),
   grade: z.string().min(1).max(30),
   messages: z.array(MessageSchema).min(1).max(40),
+  locale: z.enum(["en", "he"]).optional().default("en"),
 });
 
 const SUBJECT_FLAVOR: Record<string, string> = {
@@ -21,12 +22,17 @@ const SUBJECT_FLAVOR: Record<string, string> = {
   code: "You teach coding like a senior engineer mentoring a junior. Never dump full solutions. Ask what they've tried; propose the next 3 lines.",
 };
 
-function buildSystem(subject: string, grade: string) {
+function buildSystem(subject: string, grade: string, locale: "en" | "he") {
+  const langLine =
+    locale === "he"
+      ? "LANGUAGE: Reply in fluent, natural Hebrew (עברית). Keep LaTeX math in $...$ / $$...$$ exactly as-is — do NOT translate math symbols. Technical loanwords in English are fine when natural."
+      : "LANGUAGE: Reply in English.";
   return `You are Prodigy — a world-class private AI tutor. You solve Bloom's 2-sigma problem: one-on-one tutoring at scale.
 
 SUBJECT: ${subject}
 STUDENT LEVEL: ${grade}
 STYLE: ${SUBJECT_FLAVOR[subject] || SUBJECT_FLAVOR.math}
+${langLine}
 
 CORE PRINCIPLES:
 - SOCRATIC. Never dump the answer. Guide with the smallest useful hint, then a probing question. If the student is stuck twice in a row, give the next micro-step — never the full solution.
@@ -51,7 +57,7 @@ export const tutorReply = createServerFn({ method: "POST" })
 
     const { text } = await generateText({
       model,
-      system: buildSystem(data.subject, data.grade),
+      system: buildSystem(data.subject, data.grade, data.locale),
       messages: data.messages.map((m) => ({ role: m.role, content: m.content })),
     });
 
