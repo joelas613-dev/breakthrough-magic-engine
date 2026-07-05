@@ -68,7 +68,7 @@ function Hero() {
             Your life. Extended.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-md leading-relaxed">
-            One drop. 40 biomarkers. A longevity protocol built for <em>your</em> biology by an AI trained on 400,000 patient outcomes. From home. In 15 minutes.
+            Upload any blood test PDF. Our AI reads your actual values and builds a longevity protocol tuned to <em>your</em> biology — trained on 400,000 patient outcomes. Results in 20 seconds.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <a href="#demo" className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition">
