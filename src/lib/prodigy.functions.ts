@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -22,17 +23,29 @@ const SUBJECT_FLAVOR: Record<string, string> = {
   code: "You teach coding like a senior engineer mentoring a junior. Never dump full solutions. Ask what they've tried; propose the next 3 lines.",
 };
 
-function buildSystem(subject: string, grade: string, locale: "en" | "he") {
+function buildSystem(
+  subject: string,
+  grade: string,
+  locale: "en" | "he",
+  stuckTopics: string[] = [],
+  displayName: string | null = null,
+) {
   const langLine =
     locale === "he"
       ? "LANGUAGE: Reply in fluent, natural Hebrew (עברית). Keep LaTeX math in $...$ / $$...$$ exactly as-is — do NOT translate math symbols. Technical loanwords in English are fine when natural."
       : "LANGUAGE: Reply in English.";
+  const stuckLine = stuckTopics.length
+    ? `KNOWN STUCK POINTS for this student (from prior sessions): ${stuckTopics.join(", ")}. When relevant, gently loop back and check retention — do not re-teach unprompted.`
+    : "";
+  const nameLine = displayName ? `STUDENT NAME: ${displayName}. Address them by name occasionally, warmly.` : "";
   return `You are Prodigy — a world-class private AI tutor. You solve Bloom's 2-sigma problem: one-on-one tutoring at scale.
 
 SUBJECT: ${subject}
 STUDENT LEVEL: ${grade}
 STYLE: ${SUBJECT_FLAVOR[subject] || SUBJECT_FLAVOR.math}
 ${langLine}
+${nameLine}
+${stuckLine}
 
 CORE PRINCIPLES:
 - SOCRATIC. Never dump the answer. Guide with the smallest useful hint, then a probing question. If the student is stuck twice in a row, give the next micro-step — never the full solution.
@@ -86,4 +99,267 @@ export const joinWaitlist = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
     return { ok: true, duplicate: false };
+  });
+
+// ---------- Authenticated tutor app ----------
+
+export const getMyProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("profiles")
+      .select("id, display_name, grade, preferred_subject, locale")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? { id: context.userId, display_name: null, grade: null, preferred_subject: null, locale: "en" };
+  });
+
+const ProfileUpdate = z.object({
+  display_name: z.string().min(1).max(60).optional(),
+  grade: z.string().min(1).max(30).optional(),
+  preferred_subject: z.enum(["math", "physics", "writing", "code"]).optional(),
+  locale: z.enum(["en", "he"]).optional(),
+});
+
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ProfileUpdate.parse(input))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("profiles")
+      .upsert({ id: context.userId, ...data }, { onConflict: "id" });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listConversations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("conversations")
+      .select("id, subject, title, locale, grade, updated_at, created_at")
+      .eq("user_id", context.userId)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const CreateConv = z.object({
+  subject: z.enum(["math", "physics", "writing", "code"]),
+  grade: z.string().min(1).max(30),
+  locale: z.enum(["en", "he"]).default("en"),
+  title: z.string().max(120).optional(),
+});
+
+export const createConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => CreateConv.parse(input))
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase
+      .from("conversations")
+      .insert({
+        user_id: context.userId,
+        subject: data.subject,
+        grade: data.grade,
+        locale: data.locale,
+        title: data.title || (data.locale === "he" ? "שיחה חדשה" : "New session"),
+      })
+      .select("id, subject, title, locale, grade, updated_at, created_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const deleteConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("conversations")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getConversation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const { data: conv, error: convErr } = await context.supabase
+      .from("conversations")
+      .select("id, subject, title, locale, grade")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (convErr) throw new Error(convErr.message);
+    if (!conv) throw new Error("Not found");
+    const { data: msgs, error: msgErr } = await context.supabase
+      .from("messages")
+      .select("id, role, content, created_at")
+      .eq("conversation_id", data.id)
+      .order("created_at", { ascending: true });
+    if (msgErr) throw new Error(msgErr.message);
+    return { conversation: conv, messages: (msgs ?? []) as { id: string; role: "user" | "assistant"; content: string; created_at: string }[] };
+  });
+
+export const listStuckTopics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("stuck_topics")
+      .select("id, subject, topic, hit_count, last_seen")
+      .eq("user_id", context.userId)
+      .order("last_seen", { ascending: false })
+      .limit(20);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const SendMessage = z.object({
+  conversation_id: z.string().uuid(),
+  content: z.string().min(1).max(4000),
+});
+
+export const sendMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => SendMessage.parse(input))
+  .handler(async ({ context, data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    // Load conversation + verify ownership
+    const { data: conv, error: convErr } = await context.supabase
+      .from("conversations")
+      .select("id, subject, locale, grade, title")
+      .eq("id", data.conversation_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (convErr) throw new Error(convErr.message);
+    if (!conv) throw new Error("Conversation not found");
+
+    // Profile + stuck topics for context
+    const [{ data: profile }, { data: stuck }] = await Promise.all([
+      context.supabase.from("profiles").select("display_name").eq("id", context.userId).maybeSingle(),
+      context.supabase
+        .from("stuck_topics")
+        .select("topic")
+        .eq("user_id", context.userId)
+        .eq("subject", conv.subject)
+        .order("last_seen", { ascending: false })
+        .limit(6),
+    ]);
+
+    // Load prior messages (last 30)
+    const { data: prior, error: priorErr } = await context.supabase
+      .from("messages")
+      .select("role, content, created_at")
+      .eq("conversation_id", conv.id)
+      .order("created_at", { ascending: true })
+      .limit(30);
+    if (priorErr) throw new Error(priorErr.message);
+
+    // Insert user message
+    const { data: userMsg, error: insErr } = await context.supabase
+      .from("messages")
+      .insert({
+        conversation_id: conv.id,
+        user_id: context.userId,
+        role: "user",
+        content: data.content,
+      })
+      .select("id, role, content, created_at")
+      .single();
+    if (insErr) throw new Error(insErr.message);
+
+    const history = [
+      ...(prior ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      { role: "user" as const, content: data.content },
+    ];
+
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const stuckList = (stuck ?? []).map((s) => s.topic);
+    const { text } = await generateText({
+      model,
+      system: buildSystem(
+        conv.subject,
+        conv.grade || "middle school",
+        (conv.locale as "en" | "he") || "en",
+        stuckList,
+        profile?.display_name ?? null,
+      ),
+      messages: history,
+    });
+    const reply = text.trim();
+
+    // Persist assistant
+    const { data: asstMsg, error: asstErr } = await context.supabase
+      .from("messages")
+      .insert({
+        conversation_id: conv.id,
+        user_id: context.userId,
+        role: "assistant",
+        content: reply,
+      })
+      .select("id, role, content, created_at")
+      .single();
+    if (asstErr) throw new Error(asstErr.message);
+
+    // Auto-title on first exchange
+    if ((prior?.length ?? 0) === 0) {
+      const title = data.content.slice(0, 60).replace(/\s+/g, " ").trim() || conv.title;
+      await context.supabase.from("conversations").update({ title }).eq("id", conv.id);
+    } else {
+      await context.supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conv.id);
+    }
+
+    // Fire-and-await topic extraction (small; keeps API contract simple)
+    try {
+      const topicRes = await generateText({
+        model,
+        system:
+          "You extract the single concrete academic topic the student is struggling with in this exchange, if any. Reply with EXACTLY one short lowercase topic phrase (2-5 words, English, no punctuation) like 'chain rule' or 'thesis statements'. If the student is NOT stuck, reply with the single word: none.",
+        messages: [
+          {
+            role: "user",
+            content: `Subject: ${conv.subject}\nStudent said: ${data.content}\nTutor replied: ${reply}\n\nStuck topic (or 'none'):`,
+          },
+        ],
+      });
+      const topic = topicRes.text.trim().toLowerCase().split("\n")[0].slice(0, 60);
+      if (topic && topic !== "none" && topic.length >= 3) {
+        // upsert increment
+        const { data: existing } = await context.supabase
+          .from("stuck_topics")
+          .select("id, hit_count")
+          .eq("user_id", context.userId)
+          .eq("subject", conv.subject)
+          .eq("topic", topic)
+          .maybeSingle();
+        if (existing) {
+          await context.supabase
+            .from("stuck_topics")
+            .update({ hit_count: existing.hit_count + 1, last_seen: new Date().toISOString() })
+            .eq("id", existing.id);
+        } else {
+          await context.supabase.from("stuck_topics").insert({
+            user_id: context.userId,
+            subject: conv.subject,
+            topic,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("topic extraction failed", e);
+    }
+
+    return {
+      user: userMsg as { id: string; role: "user"; content: string; created_at: string },
+      assistant: asstMsg as { id: string; role: "assistant"; content: string; created_at: string },
+    };
   });
