@@ -65,10 +65,8 @@ Generate the JSON now.`;
 
     const { text } = await generateText({
       model,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userPrompt },
-      ],
+      system: SYSTEM,
+      prompt: userPrompt,
     });
 
     // Strip potential code fences and parse
