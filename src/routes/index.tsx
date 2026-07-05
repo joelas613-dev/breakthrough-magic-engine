@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target } from "lucide-react";
@@ -48,9 +48,14 @@ function Nav() {
           <a href="#subjects" className="hover:text-foreground transition">Subjects</a>
           <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
         </nav>
-        <a href="#waitlist" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
-          Get $10/mo access
-        </a>
+        <div className="flex items-center gap-3">
+          <Link to="/he" className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition border border-border rounded px-2 py-1">
+            עברית
+          </Link>
+          <a href="#waitlist" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
+            Get $10/mo access
+          </a>
+        </div>
       </div>
     </header>
   );
