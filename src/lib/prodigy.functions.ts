@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { LANGUAGE_NAMES, normalizeLang, isRtl, type LangCode } from "./i18n";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -13,7 +14,7 @@ const TutorInput = z.object({
   subject: z.enum(["math", "physics", "writing", "code"]),
   grade: z.string().min(1).max(30),
   messages: z.array(MessageSchema).min(1).max(40),
-  locale: z.enum(["en", "he"]).optional().default("en"),
+  locale: z.string().min(2).max(10).optional().default("en"),
 });
 
 const SUBJECT_FLAVOR: Record<string, string> = {
@@ -26,14 +27,17 @@ const SUBJECT_FLAVOR: Record<string, string> = {
 function buildSystem(
   subject: string,
   grade: string,
-  locale: "en" | "he",
+  locale: string,
   stuckTopics: string[] = [],
   displayName: string | null = null,
 ) {
+  const code: LangCode = normalizeLang(locale);
+  const langName = LANGUAGE_NAMES[code];
+  const rtlHint = isRtl(code) ? " Text direction is right-to-left." : "";
   const langLine =
-    locale === "he"
-      ? "LANGUAGE: Reply in fluent, natural Hebrew (עברית). Keep LaTeX math in $...$ / $$...$$ exactly as-is — do NOT translate math symbols. Technical loanwords in English are fine when natural."
-      : "LANGUAGE: Reply in English.";
+    code === "en"
+      ? "LANGUAGE: Reply in English."
+      : `LANGUAGE: Reply in fluent, natural ${langName}.${rtlHint} Keep LaTeX math in $...$ / $$...$$ exactly as-is — do NOT translate math symbols. Technical loanwords in English are fine when natural.`;
   const stuckLine = stuckTopics.length
     ? `KNOWN STUCK POINTS for this student (from prior sessions): ${stuckTopics.join(", ")}. When relevant, gently loop back and check retention — do not re-teach unprompted.`
     : "";
@@ -119,7 +123,7 @@ const ProfileUpdate = z.object({
   display_name: z.string().min(1).max(60).optional(),
   grade: z.string().min(1).max(30).optional(),
   preferred_subject: z.enum(["math", "physics", "writing", "code"]).optional(),
-  locale: z.enum(["en", "he"]).optional(),
+  locale: z.string().min(2).max(10).optional(),
 });
 
 export const updateMyProfile = createServerFn({ method: "POST" })
@@ -149,7 +153,7 @@ export const listConversations = createServerFn({ method: "GET" })
 const CreateConv = z.object({
   subject: z.enum(["math", "physics", "writing", "code"]),
   grade: z.string().min(1).max(30),
-  locale: z.enum(["en", "he"]).default("en"),
+  locale: z.string().min(2).max(10).default("en"),
   title: z.string().max(120).optional(),
 });
 
@@ -164,7 +168,7 @@ export const createConversation = createServerFn({ method: "POST" })
         subject: data.subject,
         grade: data.grade,
         locale: data.locale,
-        title: data.title || (data.locale === "he" ? "שיחה חדשה" : "New session"),
+        title: data.title || defaultTitleFor(data.locale),
       })
       .select("id, subject, title, locale, grade, updated_at, created_at")
       .single();
@@ -345,7 +349,7 @@ export const sendMessage = createServerFn({ method: "POST" })
       system: buildSystem(
         conv.subject,
         conv.grade || "middle school",
-        (conv.locale as "en" | "he") || "en",
+        conv.locale || "en",
         stuckList,
         profile?.display_name ?? null,
       ),
