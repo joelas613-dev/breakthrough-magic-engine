@@ -219,6 +219,37 @@ export const listStuckTopics = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const getUsageStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const [{ data: usage }, { data: subs }] = await Promise.all([
+      context.supabase
+        .from("daily_usage")
+        .select("message_count")
+        .eq("user_id", context.userId)
+        .eq("day", today)
+        .maybeSingle(),
+      context.supabase
+        .from("subscriptions")
+        .select("status, current_period_end, product_id")
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
+    const now = Date.now();
+    const activeSub = (subs ?? []).find((s: { status: string; current_period_end: string | null }) =>
+      (["active", "trialing", "past_due"].includes(s.status) && (!s.current_period_end || new Date(s.current_period_end).getTime() > now))
+      || (s.status === "canceled" && s.current_period_end && new Date(s.current_period_end).getTime() > now)
+    );
+    return {
+      isPaid: !!activeSub,
+      tier: activeSub ? (activeSub.product_id === "prodigy_family" ? "family" : "solo") : "free",
+      messagesToday: (usage?.message_count as number | undefined) ?? 0,
+      dailyLimit: 3,
+    };
+  });
+
 const SendMessage = z.object({
   conversation_id: z.string().uuid(),
   content: z.string().min(1).max(4000),
@@ -230,6 +261,31 @@ export const sendMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    // ---- Paywall enforcement ----
+    const env = (process.env.PAYMENTS_ENVIRONMENT as "sandbox" | "live") || "live";
+    // Try both envs (published=live, preview=sandbox) — grant access if ANY active subscription exists
+    const { data: subs } = await context.supabase
+      .from("subscriptions")
+      .select("status, current_period_end")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    const now = Date.now();
+    const isPaid = (subs ?? []).some((s: { status: string; current_period_end: string | null }) =>
+      (["active", "trialing", "past_due"].includes(s.status) && (!s.current_period_end || new Date(s.current_period_end).getTime() > now))
+      || (s.status === "canceled" && s.current_period_end && new Date(s.current_period_end).getTime() > now)
+    );
+    void env;
+    const FREE_DAILY_LIMIT = 3;
+    if (!isPaid) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: newCount, error: incErr } = await supabaseAdmin.rpc("increment_daily_usage", { user_uuid: context.userId });
+      if (incErr) throw new Error(incErr.message);
+      if ((newCount as unknown as number) > FREE_DAILY_LIMIT) {
+        throw new Error(`FREE_LIMIT_REACHED:${FREE_DAILY_LIMIT}`);
+      }
+    }
 
     // Load conversation + verify ownership
     const { data: conv, error: convErr } = await context.supabase

@@ -33,7 +33,10 @@ import {
   getMyProfile,
   updateMyProfile,
   listStuckTopics,
+  getUsageStatus,
 } from "@/lib/prodigy.functions";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: TutorApp,
@@ -59,10 +62,12 @@ function TutorApp() {
   const deleteConvFn = useServerFn(deleteConversation);
   const sendMsgFn = useServerFn(sendMessage);
   const updateProfileFn = useServerFn(updateMyProfile);
+  const fetchUsage = useServerFn(getUsageStatus);
 
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const convs = useQuery({ queryKey: ["conversations"], queryFn: () => fetchConvs() });
   const stuck = useQuery({ queryKey: ["stuck"], queryFn: () => fetchStuck() });
+  const usage = useQuery({ queryKey: ["usage"], queryFn: () => fetchUsage() });
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -260,6 +265,8 @@ function TutorApp() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
+        <PaymentTestModeBanner />
+        {usage.data && <UpgradeBanner usage={usage.data} isHe={isHe} />}
         <div className="md:hidden p-3 border-b border-border flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
@@ -285,8 +292,14 @@ function TutorApp() {
                 qc.invalidateQueries({ queryKey: ["conversation", activeId] });
                 qc.invalidateQueries({ queryKey: ["conversations"] });
                 qc.invalidateQueries({ queryKey: ["stuck"] });
+                qc.invalidateQueries({ queryKey: ["usage"] });
               } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Failed");
+                const msg = e instanceof Error ? e.message : "Failed";
+                if (msg.startsWith("FREE_LIMIT_REACHED")) {
+                  toast.error(isHe ? "הגעת למגבלת 3 הודעות ליום. שדרג להמשך." : "You hit the 3-message daily free limit. Upgrade to keep going.");
+                } else {
+                  toast.error(msg);
+                }
               } finally {
                 setPendingReply(false);
               }
