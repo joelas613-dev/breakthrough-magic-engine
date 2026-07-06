@@ -5,6 +5,17 @@ import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { LANGUAGE_NAMES, normalizeLang, isRtl, type LangCode } from "./i18n";
 
+const NEW_SESSION_TITLE: Record<string, string> = {
+  en: "New session", he: "שיחה חדשה", ar: "جلسة جديدة", es: "Nueva sesión",
+  fr: "Nouvelle session", de: "Neue Sitzung", pt: "Nova sessão", it: "Nuova sessione",
+  nl: "Nieuwe sessie", ru: "Новая сессия", tr: "Yeni oturum", zh: "新会话",
+  ja: "新しいセッション", ko: "새 세션", hi: "नया सत्र",
+};
+
+function defaultTitleFor(locale: string): string {
+  return NEW_SESSION_TITLE[normalizeLang(locale)] || "New session";
+}
+
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().min(1).max(4000),
