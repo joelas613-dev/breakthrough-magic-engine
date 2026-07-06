@@ -26,7 +26,7 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
     });
     return;
   }
-  await getSupabase().from('subscriptions').upsert({
+  await (getSupabase().from('subscriptions') as any).upsert({
     user_id: userId,
     paddle_subscription_id: data.id,
     paddle_customer_id: data.customerId,
@@ -53,14 +53,14 @@ async function handleSubscriptionUpdated(data: any, env: PaddleEnv) {
   };
   if (priceId) patch.price_id = priceId;
   if (productId) patch.product_id = productId;
-  await getSupabase().from('subscriptions')
+  await (getSupabase().from('subscriptions') as any)
     .update(patch)
     .eq('paddle_subscription_id', data.id)
     .eq('environment', env);
 }
 
 async function handleSubscriptionCanceled(data: any, env: PaddleEnv) {
-  await getSupabase().from('subscriptions')
+  await (getSupabase().from('subscriptions') as any)
     .update({
       status: 'canceled',
       current_period_end: data.currentBillingPeriod?.endsAt ?? data.canceledAt,
