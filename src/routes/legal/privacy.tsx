@@ -14,10 +14,8 @@ export const Route = createFileRoute("/legal/privacy")({
 function Privacy() {
   return (
     <LegalShell title="Privacy Notice" updated="2026-07-06">
-      <p><strong>Please review this page carefully and replace “[LEGAL BUSINESS NAME]” with your registered business or personal name before publishing.</strong></p>
-
       <h2>1. Who we are</h2>
-      <p><strong>[LEGAL BUSINESS NAME]</strong> ("Prodigy", "we") is the data controller for personal data collected through the Prodigy Service.</p>
+      <p><strong>Yossi Arazi</strong> ("Prodigy", "we") is the data controller for personal data collected through the Prodigy Service.</p>
 
       <h2>2. Data we collect</h2>
       <ul>

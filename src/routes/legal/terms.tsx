@@ -14,10 +14,8 @@ export const Route = createFileRoute("/legal/terms")({
 function Terms() {
   return (
     <LegalShell title="Terms & Conditions" updated="2026-07-06">
-      <p><strong>Please review this page carefully and replace “[LEGAL BUSINESS NAME]” with your registered business or personal name before publishing.</strong></p>
-
       <h2>1. Who we are</h2>
-      <p>These Terms & Conditions ("Terms") are a contract between you and <strong>[LEGAL BUSINESS NAME]</strong> ("Prodigy", "we", "us"), the provider of the Prodigy AI tutoring service (the "Service"). By using the Service you confirm you have authority to accept these Terms (or are of legal age in your jurisdiction).</p>
+      <p>These Terms & Conditions ("Terms") are a contract between you and <strong>Yossi Arazi</strong> ("Prodigy", "we", "us"), the provider of the Prodigy AI tutoring service (the "Service"). By using the Service you confirm you have authority to accept these Terms (or are of legal age in your jurisdiction).</p>
 
       <h2>2. Acceptance</h2>
       <p>By creating an account or using the Service you agree to these Terms and our Privacy Notice. If you do not agree, do not use the Service.</p>
@@ -53,7 +51,7 @@ function Terms() {
       <p>You will indemnify us for claims arising from your unlawful use of the Service, content you submit, or violations of these Terms.</p>
 
       <h2>13. Governing law</h2>
-      <p>These Terms are governed by the laws of the jurisdiction of <strong>[LEGAL BUSINESS NAME]</strong>'s registered address, unless a mandatory consumer law of your country provides otherwise. Disputes are subject to the exclusive jurisdiction of the courts of that same jurisdiction.</p>
+      <p>These Terms are governed by the laws of the jurisdiction of <strong>Yossi Arazi</strong>'s registered address, unless a mandatory consumer law of your country provides otherwise. Disputes are subject to the exclusive jurisdiction of the courts of that same jurisdiction.</p>
 
       <h2>14. Changes</h2>
       <p>We may update these Terms. Continued use after changes are posted constitutes acceptance.</p>
