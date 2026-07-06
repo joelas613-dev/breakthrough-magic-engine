@@ -17,6 +17,7 @@ import {
   Sparkles,
   Menu,
   X,
+  Globe,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -37,17 +38,26 @@ import {
 } from "@/lib/prodigy.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { LANGUAGES, isRtl, normalizeLang, t, type LangCode } from "@/lib/i18n";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: TutorApp,
 });
 
 type Subject = "math" | "physics" | "writing" | "code";
-const SUBJECTS: { id: Subject; label: string; labelHe: string; icon: typeof Sigma }[] = [
-  { id: "math", label: "Math", labelHe: "מתמטיקה", icon: Sigma },
-  { id: "physics", label: "Physics", labelHe: "פיזיקה", icon: Atom },
-  { id: "writing", label: "Writing", labelHe: "כתיבה", icon: PenLine },
-  { id: "code", label: "Code", labelHe: "קוד", icon: Code2 },
+const SUBJECTS: { id: Subject; icon: typeof Sigma }[] = [
+  { id: "math", icon: Sigma },
+  { id: "physics", icon: Atom },
+  { id: "writing", icon: PenLine },
+  { id: "code", icon: Code2 },
 ];
 
 function TutorApp() {
@@ -94,7 +104,9 @@ function TutorApp() {
 
   const [pendingReply, setPendingReply] = useState(false);
 
-  const isHe = profile.data?.locale === "he";
+  const locale = normalizeLang(profile.data?.locale);
+  const isHe = isRtl(locale);
+  const tr = t(locale);
 
   const newConv = useMutation({
     mutationFn: (subject: Subject) =>
@@ -102,7 +114,7 @@ function TutorApp() {
         data: {
           subject,
           grade: profile.data?.grade || "middle school",
-          locale: (profile.data?.locale as "en" | "he") || "en",
+          locale,
         },
       }),
     onSuccess: (row) => {
@@ -127,6 +139,11 @@ function TutorApp() {
     navigate({ to: "/", replace: true });
   }
 
+  async function changeLanguage(next: LangCode) {
+    await updateProfileFn({ data: { locale: next } });
+    qc.invalidateQueries({ queryKey: ["profile"] });
+  }
+
   return (
     <div className="h-screen bg-background text-foreground flex overflow-hidden" dir={isHe ? "rtl" : "ltr"}>
       <Toaster theme="dark" position="top-center" />
@@ -149,9 +166,14 @@ function TutorApp() {
           </button>
         </div>
 
+        {/* Language picker */}
+        <div className="px-3 pt-3">
+          <LanguagePicker current={locale} onChange={changeLanguage} label={tr.language} />
+        </div>
+
         <div className="p-3">
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1">
-            {isHe ? "התחל שיחה" : "New session"}
+            {tr.newSession}
           </div>
           <div className="grid grid-cols-2 gap-2">
             {SUBJECTS.map((s) => {
@@ -164,7 +186,7 @@ function TutorApp() {
                   className="flex flex-col items-center gap-1 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition text-xs disabled:opacity-50"
                 >
                   <Icon className="w-4 h-4 text-primary" />
-                  <span>{isHe ? s.labelHe : s.label}</span>
+                  <span>{tr[s.id]}</span>
                 </button>
               );
             })}
@@ -173,12 +195,12 @@ function TutorApp() {
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1 mt-2">
-            {isHe ? "היסטוריה" : "Sessions"}
+            {tr.sessions}
           </div>
           {convs.isLoading && <div className="text-xs text-muted-foreground px-2">…</div>}
           {convs.data?.length === 0 && (
             <div className="text-xs text-muted-foreground px-2">
-              {isHe ? "אין שיחות עדיין" : "No sessions yet"}
+              {tr.noSessions}
             </div>
           )}
           <div className="space-y-1">
@@ -215,7 +237,7 @@ function TutorApp() {
           {stuck.data && stuck.data.length > 0 && (
             <>
               <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2 px-1 mt-6 flex items-center gap-1">
-                <Target className="w-3 h-3" /> {isHe ? "נושאים תקועים" : "Stuck topics"}
+                <Target className="w-3 h-3" /> {tr.stuckTopics}
               </div>
               <div className="space-y-1">
                 {stuck.data.map((t) => (
@@ -242,10 +264,10 @@ function TutorApp() {
             </div>
             <div className="flex-1 text-left rtl:text-right min-w-0">
               <div className="text-sm font-medium truncate">
-                {profile.data?.display_name || (isHe ? "פרופיל" : "Profile")}
+                {profile.data?.display_name || tr.profile}
               </div>
               <div className="text-[11px] text-muted-foreground truncate">
-                {profile.data?.grade || (isHe ? "לא הוגדרה כיתה" : "Set grade")}
+                {profile.data?.grade || tr.setGrade}
               </div>
             </div>
           </button>
@@ -254,7 +276,7 @@ function TutorApp() {
             className="mt-2 w-full flex items-center gap-2 p-2 rounded-md text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition"
           >
             <LogOut className="w-4 h-4" />
-            {isHe ? "התנתק" : "Sign out"}
+            {tr.signOut}
           </button>
         </div>
       </aside>
@@ -266,7 +288,7 @@ function TutorApp() {
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
         <PaymentTestModeBanner />
-        {usage.data && <UpgradeBanner usage={usage.data} isHe={isHe} />}
+        {usage.data && <UpgradeBanner usage={usage.data} locale={locale} />}
         <div className="md:hidden p-3 border-b border-border flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
@@ -277,14 +299,14 @@ function TutorApp() {
         </div>
 
         {!activeId ? (
-          <EmptyState isHe={isHe} onPick={(s) => newConv.mutate(s)} />
+          <EmptyState locale={locale} onPick={(s) => newConv.mutate(s)} />
         ) : (
           <ChatArea
             key={activeId}
             conversationId={activeId}
             data={activeConv.data}
             isLoading={activeConv.isLoading}
-            isHe={isHe}
+            locale={locale}
             onSend={async (content) => {
               setPendingReply(true);
               try {
@@ -296,7 +318,7 @@ function TutorApp() {
               } catch (e) {
                 const msg = e instanceof Error ? e.message : "Failed";
                 if (msg.startsWith("FREE_LIMIT_REACHED")) {
-                  toast.error(isHe ? "הגעת למגבלת 3 הודעות ליום. שדרג להמשך." : "You hit the 3-message daily free limit. Upgrade to keep going.");
+                  toast.error(tr.freeLimit);
                 } else {
                   toast.error(msg);
                 }
@@ -312,12 +334,12 @@ function TutorApp() {
       {showProfile && profile.data && (
         <ProfileModal
           initial={profile.data}
-          isHe={isHe}
+          locale={locale}
           onClose={() => setShowProfile(false)}
           onSave={async (patch) => {
             await updateProfileFn({ data: patch });
             qc.invalidateQueries({ queryKey: ["profile"] });
-            toast.success(isHe ? "נשמר" : "Saved");
+            toast.success(tr.saved);
             setShowProfile(false);
           }}
         />
@@ -326,18 +348,58 @@ function TutorApp() {
   );
 }
 
-function EmptyState({ isHe, onPick }: { isHe: boolean; onPick: (s: Subject) => void }) {
+function LanguagePicker({
+  current,
+  onChange,
+  label,
+}: {
+  current: LangCode;
+  onChange: (l: LangCode) => void;
+  label: string;
+}) {
+  const currentLang = LANGUAGES.find((l) => l.code === current) ?? LANGUAGES[0];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-border hover:border-primary hover:bg-primary/5 transition text-sm">
+          <Globe className="w-4 h-4 text-primary" />
+          <span className="text-base leading-none">{currentLang.flag}</span>
+          <span className="flex-1 text-left rtl:text-right truncate">{currentLang.nativeLabel}</span>
+          <span className="text-[10px] font-mono uppercase text-muted-foreground">{current}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+        <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          {label}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {LANGUAGES.map((l) => (
+          <DropdownMenuItem
+            key={l.code}
+            onSelect={() => onChange(l.code)}
+            className={`gap-2 cursor-pointer ${l.code === current ? "bg-primary/10 text-primary" : ""}`}
+          >
+            <span className="text-base leading-none">{l.flag}</span>
+            <span dir={l.dir} className="flex-1">{l.nativeLabel}</span>
+            <span className="text-[10px] font-mono uppercase text-muted-foreground">{l.code}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function EmptyState({ locale, onPick }: { locale: LangCode; onPick: (s: Subject) => void }) {
+  const tr = t(locale);
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="text-center max-w-md">
         <Sparkles className="w-10 h-10 mx-auto text-primary mb-4" />
         <h2 className="text-2xl font-bold">
-          {isHe ? "במה תרצה ללמוד היום?" : "What do you want to learn?"}
+          {tr.whatLearn}
         </h2>
         <p className="text-sm text-muted-foreground mt-2">
-          {isHe
-            ? "בחר מקצוע ואני אתחיל שיחה חדשה. הכל נשמר אוטומטית."
-            : "Pick a subject and I'll start a fresh session. Everything auto-saves."}
+          {tr.pickSubject}
         </p>
         <div className="grid grid-cols-2 gap-3 mt-6">
           {SUBJECTS.map((s) => {
@@ -349,7 +411,7 @@ function EmptyState({ isHe, onPick }: { isHe: boolean; onPick: (s: Subject) => v
                 className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition flex flex-col items-center gap-2"
               >
                 <Icon className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">{isHe ? s.labelHe : s.label}</span>
+                <span className="text-sm font-medium">{tr[s.id]}</span>
               </button>
             );
           })}
@@ -364,17 +426,18 @@ type ConvData = { conversation: { id: string; subject: string; title: string; lo
 function ChatArea({
   data,
   isLoading,
-  isHe,
+  locale,
   onSend,
   pending,
 }: {
   conversationId: string;
   data: ConvData | undefined;
   isLoading: boolean;
-  isHe: boolean;
+  locale: LangCode;
   onSend: (content: string) => Promise<void>;
   pending: boolean;
 }) {
+  const tr = t(locale);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -397,7 +460,7 @@ function ChatArea({
           {isLoading && <div className="text-sm text-muted-foreground">…</div>}
           {data?.messages.length === 0 && (
             <div className="text-center text-sm text-muted-foreground py-12">
-              {isHe ? "שאל אותי כל דבר." : "Ask me anything."}
+              {tr.askAnything}
             </div>
           )}
           {data?.messages.map((m) => (
@@ -421,7 +484,7 @@ function ChatArea({
             <div className="flex justify-start">
               <div className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {isHe ? "המורה חושב…" : "Tutor is thinking…"}
+                {tr.tutorThinking}
               </div>
             </div>
           )}
@@ -432,7 +495,7 @@ function ChatArea({
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isHe ? "שאל שאלה או הראה מה ניסית…" : "Ask a question or show what you tried…"}
+            placeholder={tr.askPlaceholder}
             className="flex-1 h-12 px-4 rounded-md bg-background border border-border focus:outline-none focus:border-primary text-sm"
             disabled={pending}
           />
@@ -451,64 +514,68 @@ function ChatArea({
 
 function ProfileModal({
   initial,
-  isHe,
+  locale,
   onSave,
   onClose,
 }: {
   initial: { display_name: string | null; grade: string | null; preferred_subject: string | null; locale: string };
-  isHe: boolean;
-  onSave: (p: { display_name?: string; grade?: string; preferred_subject?: Subject; locale?: "en" | "he" }) => Promise<void>;
+  locale: LangCode;
+  onSave: (p: { display_name?: string; grade?: string; preferred_subject?: Subject; locale?: LangCode }) => Promise<void>;
   onClose: () => void;
 }) {
+  const tr = t(locale);
+  const isHe = isRtl(locale);
   const [name, setName] = useState(initial.display_name || "");
   const [grade, setGrade] = useState(initial.grade || "");
-  const [locale, setLocale] = useState<"en" | "he">((initial.locale as "en" | "he") || "en");
+  const [pickedLocale, setPickedLocale] = useState<LangCode>(normalizeLang(initial.locale));
   const [saving, setSaving] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" dir={isHe ? "rtl" : "ltr"}>
       <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6">
-        <h2 className="text-xl font-bold">{isHe ? "פרופיל התלמיד" : "Student profile"}</h2>
+        <h2 className="text-xl font-bold">{tr.studentProfile}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          {isHe ? "המורה משתמש בזה כדי להתאים את השפה והרמה." : "The tutor uses this to adapt tone and level."}
+          {tr.profileHint}
         </p>
         <div className="space-y-3 mt-4">
           <label className="block">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {isHe ? "שם" : "Name"}
+              {tr.name}
             </span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 w-full h-10 px-3 rounded-md bg-background border border-border text-sm focus:outline-none focus:border-primary"
-              placeholder={isHe ? "עדה" : "Ada"}
+              placeholder={tr.namePh}
             />
           </label>
           <label className="block">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {isHe ? "כיתה / רמה" : "Grade / level"}
+              {tr.grade}
             </span>
             <input
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               className="mt-1 w-full h-10 px-3 rounded-md bg-background border border-border text-sm focus:outline-none focus:border-primary"
-              placeholder={isHe ? "כיתה ז'" : "7th grade"}
+              placeholder={tr.gradePh}
             />
           </label>
           <label className="block">
             <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              {isHe ? "שפת ברירת מחדל" : "Default language"}
+              {tr.defaultLang}
             </span>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {(["en", "he"] as const).map((l) => (
+            <div className="mt-1 grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+              {LANGUAGES.map((l) => (
                 <button
-                  key={l}
-                  onClick={() => setLocale(l)}
-                  className={`h-10 rounded-md border text-sm ${
-                    locale === l ? "border-primary bg-primary/10 text-primary" : "border-border"
+                  key={l.code}
+                  type="button"
+                  onClick={() => setPickedLocale(l.code)}
+                  className={`h-10 rounded-md border text-xs flex items-center justify-center gap-1 px-2 ${
+                    pickedLocale === l.code ? "border-primary bg-primary/10 text-primary" : "border-border"
                   }`}
                 >
-                  {l === "en" ? "English" : "עברית"}
+                  <span>{l.flag}</span>
+                  <span className="truncate" dir={l.dir}>{l.nativeLabel}</span>
                 </button>
               ))}
             </div>
@@ -519,7 +586,7 @@ function ProfileModal({
             onClick={onClose}
             className="flex-1 h-10 rounded-md border border-border text-sm hover:bg-accent"
           >
-            {isHe ? "ביטול" : "Cancel"}
+            {tr.cancel}
           </button>
           <button
             onClick={async () => {
@@ -528,7 +595,7 @@ function ProfileModal({
                 await onSave({
                   display_name: name.trim() || undefined,
                   grade: grade.trim() || undefined,
-                  locale,
+                  locale: pickedLocale,
                 });
               } finally {
                 setSaving(false);
@@ -538,7 +605,7 @@ function ProfileModal({
             className="flex-1 h-10 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isHe ? "שמור" : "Save"}
+            {tr.save}
           </button>
         </div>
       </div>
