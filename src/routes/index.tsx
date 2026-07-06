@@ -396,7 +396,7 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a href="#waitlist" className={`mt-8 block w-full py-3 rounded-md text-center font-medium transition ${t.primary ? "bg-primary text-primary-foreground hover:opacity-90" : "border border-border hover:bg-surface-2"}`}>{t.cta}</a>
+              <Link to="/pricing" className={`mt-8 block w-full py-3 rounded-md text-center font-medium transition ${t.primary ? "bg-primary text-primary-foreground hover:opacity-90" : "border border-border hover:bg-surface-2"}`}>{t.cta}</Link>
             </div>
           ))}
         </div>
@@ -463,8 +463,11 @@ function Footer() {
           <span className="font-semibold tracking-tight">PRODIGY</span>
           <span className="text-xs text-muted-foreground ml-2 font-mono">© 2026 · Raise a prodigy.</span>
         </div>
-        <div className="text-xs text-muted-foreground font-mono">
-          Ages 6–18 · COPPA compliant · Not a replacement for accredited schooling.
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-mono">
+          <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+          <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
+          <Link to="/legal/refund" className="hover:text-foreground">Refunds</Link>
+          <Link to="/legal/privacy" className="hover:text-foreground">Privacy</Link>
         </div>
       </div>
     </footer>
