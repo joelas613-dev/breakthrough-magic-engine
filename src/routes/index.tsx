@@ -344,30 +344,41 @@ function TwoSigma() {
 type Subject = "math" | "physics" | "writing" | "code";
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
-const SUBJECT_META: Record<Subject, { label: string; icon: typeof Sigma; seed: string; placeholder: string }> = {
-  math: { label: "Math", icon: Sigma, seed: "I don't get why the derivative of x² is 2x. Where does the 2 come from?", placeholder: "Ask a math question…" },
-  physics: { label: "Physics", icon: Atom, seed: "Why does a heavier object fall at the same speed as a lighter one?", placeholder: "Ask a physics question…" },
-  writing: { label: "Writing", icon: PenLine, seed: "I have to write an essay about why lying is sometimes okay. I don't know how to start.", placeholder: "Paste your writing or ask…" },
-  code: { label: "Code", icon: Code2, seed: "My Python code is supposed to reverse a list but it prints the same list. Help.", placeholder: "Paste your code or ask…" },
+const SUBJECT_ICON: Record<Subject, typeof Sigma> = { math: Sigma, physics: Atom, writing: PenLine, code: Code2 };
+const SUBJECT_SEED: Record<Subject, string> = {
+  math: "I don't get why the derivative of x² is 2x. Where does the 2 come from?",
+  physics: "Why does a heavier object fall at the same speed as a lighter one?",
+  writing: "I have to write an essay about why lying is sometimes okay. I don't know how to start.",
+  code: "My Python code is supposed to reverse a list but it prints the same list. Help.",
+};
+const SUBJECT_PLACEHOLDER: Record<Subject, string> = {
+  math: "Ask a math question…",
+  physics: "Ask a physics question…",
+  writing: "Paste your writing or ask…",
+  code: "Paste your code or ask…",
 };
 
 function LiveTutor() {
+  const { s, locale } = useL();
   const [subject, setSubject] = useState<Subject>("math");
   const [grade, setGrade] = useState("8th grade");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const labels = useMemo<Record<Subject, string>>(() => ({
+    math: s.subjMath, physics: s.subjPhysics, writing: s.subjWriting, code: s.subjCode,
+  }), [s]);
 
   const mutation = useMutation({
     mutationFn: async (userText: string) => {
       const next: ChatMsg[] = [...messages, { role: "user", content: userText }];
       setMessages(next);
       setInput("");
-      const res = await tutorReply({ data: { subject, grade, messages: next } });
+      const res = await tutorReply({ data: { subject, grade, messages: next, locale } });
       setMessages([...next, { role: "assistant", content: res.reply }]);
       return res;
     },
-    onError: (e: Error) => toast.error(e.message || "The tutor is thinking too hard. Try again."),
+    onError: (e: Error) => toast.error(e.message || s.tutorErr),
   });
 
   useEffect(() => {
@@ -391,33 +402,32 @@ function LiveTutor() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
           <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5" /> 02 · Live Tutor
+            <Sparkles className="w-3.5 h-3.5" /> {s.tutorEyebrow}
           </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Ask Prodigy anything. Right now.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">Pick a subject, tell us the grade level, and watch the tutor work. It won't just give the answer — it'll teach you.</p>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">{s.tutorTitle}</h2>
+          <p className="mt-4 text-muted-foreground text-lg">{s.tutorSub}</p>
         </div>
 
         <div className="grid md:grid-cols-[280px_1fr] gap-6">
           {/* Controls */}
           <div className="bg-surface border border-border rounded-xl p-5 space-y-5 h-fit md:sticky md:top-24">
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Subject</label>
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">{s.ctrlSubject}</label>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {(Object.keys(SUBJECT_META) as Subject[]).map((s) => {
-                  const Meta = SUBJECT_META[s];
-                  const Icon = Meta.icon;
+                {(Object.keys(SUBJECT_ICON) as Subject[]).map((sub) => {
+                  const Icon = SUBJECT_ICON[sub];
                   return (
-                    <button key={s} onClick={() => changeSubject(s)}
-                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border transition ${subject === s ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-muted-foreground"}`}>
+                    <button key={sub} onClick={() => changeSubject(sub)}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border transition ${subject === sub ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-muted-foreground"}`}>
                       <Icon className="w-4 h-4" />
-                      <span className="text-xs">{Meta.label}</span>
+                      <span className="text-xs">{labels[sub]}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Grade / Level</label>
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">{s.ctrlGrade}</label>
               <select value={grade} onChange={(e) => setGrade(e.target.value)}
                 className="mt-2 w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:border-primary transition">
                 {["2nd grade", "4th grade", "6th grade", "8th grade", "10th grade", "12th grade", "College freshman", "Adult learner"].map((g) => (
@@ -426,17 +436,17 @@ function LiveTutor() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Quick prompts</label>
-              <button onClick={() => send(SUBJECT_META[subject].seed)}
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">{s.ctrlQuick}</label>
+              <button onClick={() => send(SUBJECT_SEED[subject])}
                 disabled={mutation.isPending}
                 className="mt-2 w-full text-left text-xs p-3 bg-background border border-border rounded-md hover:border-primary transition text-muted-foreground hover:text-foreground disabled:opacity-50">
-                {SUBJECT_META[subject].seed}
+                {SUBJECT_SEED[subject]}
               </button>
             </div>
             {messages.length > 0 && (
               <button onClick={() => setMessages([])}
                 className="w-full py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground border border-border rounded-md transition">
-                Reset session
+                {s.ctrlReset}
               </button>
             )}
           </div>
@@ -452,7 +462,7 @@ function LiveTutor() {
               onSubmit={(e) => { e.preventDefault(); send(input); }}
               className="border-t border-border p-4 flex gap-2">
               <input value={input} onChange={(e) => setInput(e.target.value)}
-                placeholder={SUBJECT_META[subject].placeholder}
+                placeholder={SUBJECT_PLACEHOLDER[subject]}
                 disabled={mutation.isPending}
                 className="flex-1 bg-background border border-border rounded-md px-4 py-3 text-sm focus:outline-none focus:border-primary transition disabled:opacity-50" />
               <button type="submit" disabled={mutation.isPending || !input.trim()}
@@ -468,15 +478,15 @@ function LiveTutor() {
 }
 
 function TutorEmptyState({ subject }: { subject: Subject }) {
-  const Meta = SUBJECT_META[subject];
-  const Icon = Meta.icon;
+  const { s } = useL();
+  const Icon = SUBJECT_ICON[subject];
   return (
     <div className="h-full flex flex-col items-center justify-center text-center py-16 px-4">
       <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-4">
         <Icon className="w-7 h-7 text-primary" />
       </div>
-      <h4 className="font-display text-xl font-semibold">Your Prodigy tutor is ready</h4>
-      <p className="text-muted-foreground mt-2 max-w-sm text-sm">Type a question, paste a problem, or use the quick prompt on the left. The tutor will guide — not just answer.</p>
+      <h4 className="font-display text-xl font-semibold">{s.emptyTitle}</h4>
+      <p className="text-muted-foreground mt-2 max-w-sm text-sm">{s.emptyBody}</p>
     </div>
   );
 }
