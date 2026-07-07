@@ -114,6 +114,41 @@ const WaitlistInput = z.object({
   goal: z.string().max(500).optional().default(""),
 });
 
+const TranslateInput = z.object({
+  targetLang: z.string().min(2).max(10),
+  strings: z.record(z.string(), z.string()).refine((r) => Object.keys(r).length <= 200, "too many keys"),
+});
+
+export const translateStrings = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => TranslateInput.parse(input))
+  .handler(async ({ data }): Promise<{ translations: Record<string, string> }> => {
+    const code = normalizeLang(data.targetLang);
+    if (code === "en") return { translations: data.strings };
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-3-flash-preview");
+    const langName = LANGUAGE_NAMES[code];
+    const payload = JSON.stringify(data.strings);
+    const { text } = await generateText({
+      model,
+      system: `You are a professional marketing translator. Translate every VALUE in the given JSON object into fluent, natural ${langName}. KEEP KEYS UNCHANGED. Keep the same JSON shape. Preserve emojis, $ symbols, numbers, and any HTML/markdown as-is. Return ONLY the JSON object, no code fences, no commentary.`,
+      messages: [{ role: "user", content: payload }],
+    });
+    let cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+    try {
+      const parsed = JSON.parse(cleaned) as Record<string, string>;
+      // ensure all keys present
+      const out: Record<string, string> = {};
+      for (const k of Object.keys(data.strings)) {
+        out[k] = typeof parsed[k] === "string" ? parsed[k] : data.strings[k];
+      }
+      return { translations: out };
+    } catch {
+      return { translations: data.strings };
+    }
+  });
+
 export const joinWaitlist = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => WaitlistInput.parse(input))
   .handler(async ({ data }) => {
