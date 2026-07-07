@@ -1,37 +1,204 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target } from "lucide-react";
+import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target, Globe, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import heroImg from "@/assets/prodigy-hero.jpg";
-import { tutorReply, joinWaitlist } from "@/lib/prodigy.functions";
+import { tutorReply, joinWaitlist, translateStrings } from "@/lib/prodigy.functions";
 import { Toaster } from "@/components/ui/sonner";
+import { LANGUAGES, isRtl, normalizeLang, type LangCode } from "@/lib/i18n";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/")({
   component: ProdigyLanding,
 });
 
+// -------- Landing i18n --------
+const S = {
+  navMethod: "Method",
+  navTutor: "Try tutor",
+  navSubjects: "Subjects",
+  navPricing: "Pricing",
+  navLanguages: "Languages",
+  navSignIn: "Sign in",
+  navOpenTutor: "Open tutor",
+  heroLive: "LIVE • 24,109 kids learning",
+  heroTitle1: "An MIT tutor.",
+  heroTitle2: "For every kid.",
+  heroTitle3: "For $10 a month.",
+  heroSub: "Prodigy solves Bloom's 2-sigma problem. An AI tutor that finds exactly where your child is stuck, draws it out, and pulls them to the top 1% — one Socratic question at a time.",
+  heroCta1: "Try the tutor now",
+  heroCta2: "How it works",
+  heroBadge1: "Top 1% PISA outcomes",
+  heroBadge2: "COPPA compliant · Ages 6–18",
+  heroStat1: "Avg score lift",
+  heroStat2: "Cost vs human tutor",
+  methodEyebrow: "01 · The 2-sigma method",
+  methodTitle: "Benjamin Bloom proved it in 1984. We just built it.",
+  methodSub: "Kids with 1-on-1 tutors outperform 98% of classroom peers. The catch: personal tutors cost $80/hr. Prodigy delivers the same pedagogy for $10/month.",
+  step1Title: "Diagnose.",
+  step1Body: "In under 3 questions, Prodigy pinpoints the exact concept your child is missing — not what the worksheet says they got wrong, but the underlying misconception.",
+  step2Title: "Socratic loop.",
+  step2Body: "No answer-dumping. Prodigy asks the smallest question that unlocks the next step. Your child does the thinking. That's how mastery is built.",
+  step3Title: "Mastery.",
+  step3Body: "Every session ends when the concept is genuinely internalized — checked with novel problems the AI generates on the spot. Not memorization. Understanding.",
+  tutorEyebrow: "02 · Live Tutor",
+  tutorTitle: "Ask Prodigy anything. Right now.",
+  tutorSub: "Pick a subject, tell us the grade level, and watch the tutor work. It won't just give the answer — it'll teach you.",
+  ctrlSubject: "Subject",
+  ctrlGrade: "Grade / Level",
+  ctrlQuick: "Quick prompts",
+  ctrlReset: "Reset session",
+  subjMath: "Math",
+  subjPhysics: "Physics",
+  subjWriting: "Writing",
+  subjCode: "Code",
+  emptyTitle: "Your Prodigy tutor is ready",
+  emptyBody: "Type a question, paste a problem, or use the quick prompt on the left. The tutor will guide — not just answer.",
+  tutorErr: "The tutor is thinking too hard. Try again.",
+  subjectsEyebrow: "03 · Curriculum",
+  subjectsTitle: "Every subject. Every level. One tutor.",
+  subjectsSub: "From \"why is the sky blue\" to \"prove the Riemann hypothesis\" (well — try). Prodigy scales from age 6 to olympiad prep, and remembers your kid across every session.",
+  rowMath: "Math",
+  rowMathList: "Arithmetic · Algebra · Geometry · Trig · Precalc · Calculus · Linear algebra · Statistics · Number theory · Olympiad training",
+  rowPhysics: "Physics",
+  rowPhysicsList: "Mechanics · Electromagnetism · Thermodynamics · Waves · Optics · Modern & quantum · AP/IB/A-level prep",
+  rowWriting: "Writing",
+  rowWritingList: "Structure · Argument · Voice · Grammar · SAT/ACT essay · College application · Creative fiction",
+  rowCode: "Code",
+  rowCodeList: "Python · JavaScript · Data structures · Algorithms · USACO training · Intro to ML",
+  rowChem: "Chemistry",
+  rowChemList: "General · Organic · AP prep · Stoichiometry · Reaction mechanisms",
+  rowHum: "History & humanities",
+  rowHumList: "Analytical reading · Thesis crafting · Primary source analysis · Debate coaching",
+  pricingEyebrow: "04 · Pricing",
+  pricingTitle: "A human tutor is $80/hr. Prodigy is $10/month.",
+  tierCuriousName: "Curious",
+  tierCuriousTag: "For explorers",
+  tierCuriousF1: "10 tutor sessions/month",
+  tierCuriousF2: "All subjects",
+  tierCuriousF3: "Basic progress tracking",
+  tierCuriousCta: "Start free",
+  tierProdigyName: "Prodigy",
+  tierProdigyPer: "/mo per child",
+  tierProdigyTag: "Most families",
+  tierProdigyF1: "Unlimited tutor sessions",
+  tierProdigyF2: "Weekly mastery reports for parents",
+  tierProdigyF3: "Custom curriculum path",
+  tierProdigyF4: "Olympiad & competition prep",
+  tierProdigyF5: "PISA / SAT / ACT drills",
+  tierProdigyCta: "Start Prodigy",
+  tierFamilyName: "Family",
+  tierFamilyPer: "/mo · 4 kids",
+  tierFamilyTag: "For siblings",
+  tierFamilyF1: "Everything in Prodigy × 4 kids",
+  tierFamilyF2: "Cross-child insights for parents",
+  tierFamilyF3: "Priority support",
+  tierFamilyF4: "Human tutor escalation (1hr/mo)",
+  tierFamilyCta: "Get Family",
+  waitEyebrow: "05 · Founding families",
+  waitTitle1: "Raise a",
+  waitTitle2: "prodigy.",
+  waitSub1: "First 10,000 families get lifetime Prodigy at",
+  waitSub2: "$5/month per child",
+  waitSub3: "— half off, forever. Only",
+  waitSub4: "3,472 spots",
+  waitSub5: "left.",
+  waitDone: "You're in. We'll be in touch.",
+  waitEmailPh: "you@raisingaprodigy.com",
+  waitGoalPh: "Kid's age & biggest struggle (optional)",
+  waitCta: "Claim founding-family pricing",
+  waitLoading: "Reserving your spot…",
+  waitFine: "No spam. No selling data. COPPA compliant.",
+  waitToastDup: "You're already in. Position saved.",
+  waitToastOk: "You're in. Position #24,110.",
+  waitToastErr: "Something went wrong. Try again.",
+  footerCopy: "© 2026 · Raise a prodigy.",
+  footerPricing: "Pricing",
+  footerTerms: "Terms",
+  footerRefunds: "Refunds",
+  footerPrivacy: "Privacy",
+} as const;
+
+type LStrings = Record<keyof typeof S, string>;
+const LandingI18nCtx = createContext<{ s: LStrings; locale: LangCode; setLocale: (c: LangCode) => void; loading: boolean }>({
+  s: S as LStrings, locale: "en", setLocale: () => {}, loading: false,
+});
+const useL = () => useContext(LandingI18nCtx);
+
+const LOCALE_KEY = "prodigy_landing_locale";
+const cacheKey = (code: LangCode) => `prodigy_landing_t_${code}`;
+
+function useLandingI18n() {
+  const [locale, setLocaleState] = useState<LangCode>("en");
+  const [s, setS] = useState<LStrings>(S as LStrings);
+  const [loading, setLoading] = useState(false);
+
+  // hydrate from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = normalizeLang(localStorage.getItem(LOCALE_KEY) || navigator.language);
+    if (saved !== "en") applyLocale(saved);
+    else setLocaleState("en");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyLocale(code: LangCode) {
+    setLocaleState(code);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LOCALE_KEY, code);
+      document.documentElement.dir = isRtl(code) ? "rtl" : "ltr";
+      document.documentElement.lang = code;
+    }
+    if (code === "en") { setS(S as LStrings); return; }
+    const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey(code)) : null;
+    if (cached) {
+      try { setS({ ...(S as LStrings), ...JSON.parse(cached) }); return; } catch {}
+    }
+    setLoading(true);
+    translateStrings({ data: { targetLang: code, strings: S as Record<string, string> } })
+      .then((res) => {
+        setS({ ...(S as LStrings), ...(res.translations as LStrings) });
+        try { localStorage.setItem(cacheKey(code), JSON.stringify(res.translations)); } catch {}
+      })
+      .catch(() => toast.error("Translation failed. Showing English."))
+      .finally(() => setLoading(false));
+  }
+
+  return { s, locale, setLocale: applyLocale, loading };
+}
+
 function ProdigyLanding() {
+  const i18n = useLandingI18n();
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      <Toaster theme="dark" position="top-center" />
-      <Nav />
-      <Hero />
-      <Ticker />
-      <TwoSigma />
-      <LiveTutor />
-      <Subjects />
-      <Pricing />
-      <Waitlist />
-      <Footer />
-    </div>
+    <LandingI18nCtx.Provider value={i18n}>
+      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+        <Toaster theme="dark" position="top-center" />
+        <Nav />
+        <Hero />
+        <Ticker />
+        <TwoSigma />
+        <LiveTutor />
+        <Subjects />
+        <Pricing />
+        <Waitlist />
+        <Footer />
+      </div>
+    </LandingI18nCtx.Provider>
   );
 }
 
 function Nav() {
+  const { s, locale, setLocale, loading } = useL();
+  const current = LANGUAGES.find((l) => l.code === locale) ?? LANGUAGES[0];
   return (
     <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/60 border-b border-border">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -43,20 +210,34 @@ function Nav() {
           <span className="ml-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border border-primary/40 text-primary rounded">Beta</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          <a href="#method" className="hover:text-foreground transition">Method</a>
-          <a href="#tutor" className="hover:text-foreground transition">Try tutor</a>
-          <a href="#subjects" className="hover:text-foreground transition">Subjects</a>
-          <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
+          <a href="#method" className="hover:text-foreground transition">{s.navMethod}</a>
+          <a href="#tutor" className="hover:text-foreground transition">{s.navTutor}</a>
+          <a href="#subjects" className="hover:text-foreground transition">{s.navSubjects}</a>
+          <a href="#pricing" className="hover:text-foreground transition">{s.navPricing}</a>
         </nav>
         <div className="flex items-center gap-3">
-          <Link to="/he" className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition border border-border rounded px-2 py-1">
-            עברית
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition border border-border rounded px-2 py-1.5" aria-label={s.navLanguages}>
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{current.flag} {current.nativeLabel}</span>
+              <span className="sm:hidden">{current.flag}</span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto w-56">
+              {LANGUAGES.map((l) => (
+                <DropdownMenuItem key={l.code} onClick={() => setLocale(l.code)} className="cursor-pointer">
+                  <span className="mr-2">{l.flag}</span>
+                  <span className="flex-1">{l.nativeLabel}</span>
+                  {locale === l.code && <Check className="w-3.5 h-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link to="/app" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition">
-            Sign in
+            {s.navSignIn}
           </Link>
           <Link to="/app" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
-            Open tutor
+            {s.navOpenTutor}
           </Link>
         </div>
       </div>
@@ -65,6 +246,7 @@ function Nav() {
 }
 
 function Hero() {
+  const { s } = useL();
   return (
     <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 radial-fade">
       <div className="absolute inset-0 grid-bg opacity-40 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_75%)]" />
@@ -72,38 +254,36 @@ function Hero() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-xs font-mono text-primary mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-primary pulse-ring" />
-            LIVE • 24,109 kids learning
+            {s.heroLive}
           </div>
           <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
-            An MIT tutor.<br />
-            <span className="text-primary text-glow">For every kid.</span><br />
-            For $10 a month.
+            {s.heroTitle1}<br />
+            <span className="text-primary text-glow">{s.heroTitle2}</span><br />
+            {s.heroTitle3}
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-md leading-relaxed">
-            Prodigy solves Bloom's 2-sigma problem. An AI tutor that finds <em>exactly</em> where your child is stuck, draws it out, and pulls them to the top 1% — one Socratic question at a time.
-          </p>
+          <p className="mt-6 text-lg text-muted-foreground max-w-md leading-relaxed">{s.heroSub}</p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <a href="#tutor" className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition">
-              Try the tutor now <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
+              {s.heroCta1} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
             </a>
             <a href="#method" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border border-border rounded-md font-medium hover:bg-surface transition">
-              How it works
+              {s.heroCta2}
             </a>
           </div>
           <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground font-mono">
-            <div className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5" /> Top 1% PISA outcomes</div>
-            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> COPPA compliant · Ages 6–18</div>
+            <div className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5" /> {s.heroBadge1}</div>
+            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> {s.heroBadge2}</div>
           </div>
         </div>
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
           <img src={heroImg} alt="Constellation of mathematical and physics diagrams glowing in gold" className="relative w-full aspect-square object-cover rounded-2xl border border-border" width={1024} height={1024} />
           <div className="absolute -bottom-4 -left-4 bg-surface border border-border rounded-lg p-3 backdrop-blur-xl">
-            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">Avg score lift</div>
+            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">{s.heroStat1}</div>
             <div className="text-2xl font-semibold text-primary text-glow">+2.0σ</div>
           </div>
           <div className="absolute -top-4 -right-4 bg-surface border border-border rounded-lg p-3 backdrop-blur-xl">
-            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">Cost vs human tutor</div>
+            <div className="text-[10px] font-mono uppercase text-muted-foreground tracking-widest">{s.heroStat2}</div>
             <div className="text-2xl font-semibold text-primary text-glow">1/400</div>
           </div>
         </div>
