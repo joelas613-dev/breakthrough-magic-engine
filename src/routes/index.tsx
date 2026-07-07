@@ -308,18 +308,19 @@ function Ticker() {
 }
 
 function TwoSigma() {
+  const { s } = useL();
   const steps = [
-    { icon: Target, title: "Diagnose.", body: "In under 3 questions, Prodigy pinpoints the exact concept your child is missing — not what the worksheet says they got wrong, but the underlying misconception." },
-    { icon: Brain, title: "Socratic loop.", body: "No answer-dumping. Prodigy asks the smallest question that unlocks the next step. Your child does the thinking. That's how mastery is built." },
-    { icon: Zap, title: "Mastery.", body: "Every session ends when the concept is genuinely internalized — checked with novel problems the AI generates on the spot. Not memorization. Understanding." },
+    { icon: Target, title: s.step1Title, body: s.step1Body },
+    { icon: Brain, title: s.step2Title, body: s.step2Body },
+    { icon: Zap, title: s.step3Title, body: s.step3Body },
   ];
   return (
     <section id="method" className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-16">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">01 · The 2-sigma method</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Benjamin Bloom proved it in 1984. We just built it.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">Kids with 1-on-1 tutors outperform 98% of classroom peers. The catch: personal tutors cost $80/hr. Prodigy delivers the same pedagogy for $10/month.</p>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">{s.methodEyebrow}</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">{s.methodTitle}</h2>
+          <p className="mt-4 text-muted-foreground text-lg">{s.methodSub}</p>
         </div>
         <div className="grid md:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
           {steps.map((s, i) => (
