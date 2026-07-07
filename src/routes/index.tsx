@@ -527,21 +527,22 @@ function TypingBubble() {
 }
 
 function Subjects() {
+  const { s } = useL();
   const rows: [string, string][] = [
-    ["Math", "Arithmetic · Algebra · Geometry · Trig · Precalc · Calculus · Linear algebra · Statistics · Number theory · Olympiad training"],
-    ["Physics", "Mechanics · Electromagnetism · Thermodynamics · Waves · Optics · Modern & quantum · AP/IB/A-level prep"],
-    ["Writing", "Structure · Argument · Voice · Grammar · SAT/ACT essay · College application · Creative fiction"],
-    ["Code", "Python · JavaScript · Data structures · Algorithms · USACO training · Intro to ML"],
-    ["Chemistry", "General · Organic · AP prep · Stoichiometry · Reaction mechanisms"],
-    ["History & humanities", "Analytical reading · Thesis crafting · Primary source analysis · Debate coaching"],
+    [s.rowMath, s.rowMathList],
+    [s.rowPhysics, s.rowPhysicsList],
+    [s.rowWriting, s.rowWritingList],
+    [s.rowCode, s.rowCodeList],
+    [s.rowChem, s.rowChemList],
+    [s.rowHum, s.rowHumList],
   ];
   return (
     <section id="subjects" className="py-24 md:py-32 border-t border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">03 · Curriculum</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">Every subject. Every level. One tutor.</h2>
-          <p className="mt-4 text-muted-foreground text-lg">From "why is the sky blue" to "prove the Riemann hypothesis" (well — try). Prodigy scales from age 6 to olympiad prep, and remembers your kid across every session.</p>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">{s.subjectsEyebrow}</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">{s.subjectsTitle}</h2>
+          <p className="mt-4 text-muted-foreground text-lg">{s.subjectsSub}</p>
         </div>
         <div className="border border-border rounded-xl overflow-hidden">
           {rows.map(([cat, list], i) => (
@@ -557,17 +558,18 @@ function Subjects() {
 }
 
 function Pricing() {
+  const { s } = useL();
   const tiers = [
-    { name: "Curious", price: "$0", tag: "For explorers", features: ["10 tutor sessions/month", "All subjects", "Basic progress tracking"], cta: "Start free", primary: false },
-    { name: "Prodigy", price: "$10", per: "/mo per child", tag: "Most families", features: ["Unlimited tutor sessions", "Weekly mastery reports for parents", "Custom curriculum path", "Olympiad & competition prep", "PISA / SAT / ACT drills"], cta: "Start Prodigy", primary: true },
-    { name: "Family", price: "$25", per: "/mo · 4 kids", tag: "For siblings", features: ["Everything in Prodigy × 4 kids", "Cross-child insights for parents", "Priority support", "Human tutor escalation (1hr/mo)"], cta: "Get Family", primary: false },
+    { name: s.tierCuriousName, price: "$0", tag: s.tierCuriousTag, features: [s.tierCuriousF1, s.tierCuriousF2, s.tierCuriousF3], cta: s.tierCuriousCta, primary: false },
+    { name: s.tierProdigyName, price: "$10", per: s.tierProdigyPer, tag: s.tierProdigyTag, features: [s.tierProdigyF1, s.tierProdigyF2, s.tierProdigyF3, s.tierProdigyF4, s.tierProdigyF5], cta: s.tierProdigyCta, primary: true },
+    { name: s.tierFamilyName, price: "$25", per: s.tierFamilyPer, tag: s.tierFamilyTag, features: [s.tierFamilyF1, s.tierFamilyF2, s.tierFamilyF3, s.tierFamilyF4], cta: s.tierFamilyCta, primary: false },
   ];
   return (
     <section id="pricing" className="py-24 md:py-32 border-t border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-2xl mb-12">
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">04 · Pricing</div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">A human tutor is $80/hr. Prodigy is $10/month.</h2>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">{s.pricingEyebrow}</div>
+          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">{s.pricingTitle}</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {tiers.map((t) => (
@@ -597,6 +599,7 @@ function Pricing() {
 }
 
 function Waitlist() {
+  const { s } = useL();
   const [email, setEmail] = useState("");
   const [goal, setGoal] = useState("");
   const [done, setDone] = useState(false);
@@ -605,36 +608,36 @@ function Waitlist() {
     mutationFn: async () => await joinWaitlist({ data: { email, goal } }),
     onSuccess: (r) => {
       setDone(true);
-      toast.success(r.duplicate ? "You're already in. Position saved." : "You're in. Position #24,110.");
+      toast.success(r.duplicate ? s.waitToastDup : s.waitToastOk);
     },
-    onError: (e: Error) => toast.error(e.message || "Something went wrong. Try again."),
+    onError: (e: Error) => toast.error(e.message || s.waitToastErr),
   });
 
   return (
     <section id="waitlist" className="py-24 md:py-32 border-t border-border relative overflow-hidden">
       <div className="absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
       <div className="relative max-w-2xl mx-auto px-6 text-center">
-        <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">05 · Founding families</div>
-        <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight">Raise a <span className="text-primary text-glow">prodigy.</span></h2>
-        <p className="mt-6 text-muted-foreground text-lg">First 10,000 families get lifetime Prodigy at <span className="text-primary font-mono">$5/month per child</span> — half off, forever. Only <span className="text-primary font-mono">3,472 spots</span> left.</p>
+        <div className="text-xs font-mono uppercase tracking-widest text-primary mb-4">{s.waitEyebrow}</div>
+        <h2 className="font-display text-4xl md:text-6xl font-semibold tracking-tight">{s.waitTitle1} <span className="text-primary text-glow">{s.waitTitle2}</span></h2>
+        <p className="mt-6 text-muted-foreground text-lg">{s.waitSub1} <span className="text-primary font-mono">{s.waitSub2}</span> {s.waitSub3} <span className="text-primary font-mono">{s.waitSub4}</span> {s.waitSub5}</p>
 
         {done ? (
           <div className="mt-10 inline-flex items-center gap-3 px-6 py-4 bg-primary/10 border border-primary/40 rounded-xl">
             <Check className="w-5 h-5 text-primary" />
-            <span className="font-medium">You're in. We'll be in touch.</span>
+            <span className="font-medium">{s.waitDone}</span>
           </div>
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="mt-10 space-y-3 max-w-md mx-auto">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@raisingaprodigy.com"
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={s.waitEmailPh}
               className="w-full bg-surface border border-border rounded-md px-4 py-3.5 focus:outline-none focus:border-primary transition" />
-            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Kid's age & biggest struggle (optional)"
+            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={s.waitGoalPh}
               className="w-full bg-surface border border-border rounded-md px-4 py-3.5 focus:outline-none focus:border-primary transition" />
             <button type="submit" disabled={mutation.isPending}
               className="w-full py-3.5 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2">
-              {mutation.isPending ? (<><Loader2 className="w-4 h-4 animate-spin" /> Reserving your spot…</>) : (<>Claim founding-family pricing <ArrowRight className="w-4 h-4" /></>)}
+              {mutation.isPending ? (<><Loader2 className="w-4 h-4 animate-spin" /> {s.waitLoading}</>) : (<>{s.waitCta} <ArrowRight className="w-4 h-4" /></>)}
             </button>
             <p className="text-xs text-muted-foreground font-mono flex items-center justify-center gap-2 pt-2">
-              <Clock className="w-3 h-3" /> No spam. No selling data. COPPA compliant.
+              <Clock className="w-3 h-3" /> {s.waitFine}
             </p>
           </form>
         )}
@@ -644,6 +647,7 @@ function Waitlist() {
 }
 
 function Footer() {
+  const { s } = useL();
   return (
     <footer className="border-t border-border py-12">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -652,13 +656,13 @@ function Footer() {
             <GraduationCap className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
           </div>
           <span className="font-semibold tracking-tight">PRODIGY</span>
-          <span className="text-xs text-muted-foreground ml-2 font-mono">© 2026 · Raise a prodigy.</span>
+          <span className="text-xs text-muted-foreground ml-2 font-mono">{s.footerCopy}</span>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-mono">
-          <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
-          <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
-          <Link to="/legal/refund" className="hover:text-foreground">Refunds</Link>
-          <Link to="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link to="/pricing" className="hover:text-foreground">{s.footerPricing}</Link>
+          <Link to="/legal/terms" className="hover:text-foreground">{s.footerTerms}</Link>
+          <Link to="/legal/refund" className="hover:text-foreground">{s.footerRefunds}</Link>
+          <Link to="/legal/privacy" className="hover:text-foreground">{s.footerPrivacy}</Link>
         </div>
       </div>
     </footer>
