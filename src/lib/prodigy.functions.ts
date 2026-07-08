@@ -124,6 +124,50 @@ const WaitlistInput = z.object({
   goal: z.string().max(500).optional().default(""),
 });
 
+const TranscribeInput = z.object({
+  audio: z.string().min(10).max(20 * 1024 * 1024), // base64
+  mime: z.string().max(80).default("audio/webm"),
+  language: z.string().min(2).max(10).optional(),
+});
+
+export const transcribeAudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => TranscribeInput.parse(input))
+  .handler(async ({ data }): Promise<{ text: string }> => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    // Decode base64 -> bytes
+    const bin = atob(data.audio);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    const ext =
+      data.mime.includes("mp4") || data.mime.includes("m4a") ? "mp4"
+      : data.mime.includes("mpeg") || data.mime.includes("mp3") ? "mp3"
+      : data.mime.includes("wav") ? "wav"
+      : data.mime.includes("ogg") ? "ogg"
+      : "webm";
+
+    const blob = new Blob([bytes], { type: data.mime || `audio/${ext}` });
+    const fd = new FormData();
+    fd.append("model", "openai/gpt-4o-mini-transcribe");
+    fd.append("file", blob, `recording.${ext}`);
+    if (data.language) fd.append("language", data.language.slice(0, 2));
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Lovable-API-Key": key },
+      body: fd,
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Transcription failed: ${res.status} ${errText.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as { text?: string };
+    return { text: (json.text ?? "").trim() };
+  });
+
 const TranslateInput = z.object({
   targetLang: z.string().min(2).max(10),
   strings: z.record(z.string(), z.string()).refine((r) => Object.keys(r).length <= 200, "too many keys"),
