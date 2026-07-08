@@ -24,6 +24,11 @@ import {
   Microscope,
   BookOpen,
   Feather,
+  Paperclip,
+  Camera,
+  Mic,
+  Square,
+  ImageIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -41,6 +46,7 @@ import {
   updateMyProfile,
   listStuckTopics,
   getUsageStatus,
+  transcribeAudio,
 } from "@/lib/prodigy.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
