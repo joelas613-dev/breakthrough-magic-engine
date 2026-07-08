@@ -195,7 +195,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
 const ProfileUpdate = z.object({
   display_name: z.string().min(1).max(60).optional(),
   grade: z.string().min(1).max(30).optional(),
-  preferred_subject: z.enum(["math", "physics", "writing", "code"]).optional(),
+  preferred_subject: SUBJECT_ENUM.optional(),
   locale: z.string().min(2).max(10).optional(),
 });
 
@@ -224,7 +224,7 @@ export const listConversations = createServerFn({ method: "GET" })
   });
 
 const CreateConv = z.object({
-  subject: z.enum(["math", "physics", "writing", "code"]),
+  subject: SUBJECT_ENUM,
   grade: z.string().min(1).max(30),
   locale: z.string().min(2).max(10).default("en"),
   title: z.string().max(120).optional(),

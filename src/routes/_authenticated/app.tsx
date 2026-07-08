@@ -18,6 +18,12 @@ import {
   Menu,
   X,
   Globe,
+  Languages as LanguagesIcon,
+  FlaskConical,
+  Dna,
+  Microscope,
+  BookOpen,
+  Feather,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -38,7 +44,7 @@ import {
 } from "@/lib/prodigy.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
-import { LANGUAGES, isRtl, normalizeLang, t, type LangCode } from "@/lib/i18n";
+import { LANGUAGES, isRtl, normalizeLang, t, subjectLabel, type LangCode, type Subject } from "@/lib/i18n";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -52,10 +58,14 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: TutorApp,
 });
 
-type Subject = "math" | "physics" | "writing" | "code";
 const SUBJECTS: { id: Subject; icon: typeof Sigma }[] = [
   { id: "math", icon: Sigma },
   { id: "physics", icon: Atom },
+  { id: "chemistry", icon: FlaskConical },
+  { id: "biology", icon: Dna },
+  { id: "science", icon: Microscope },
+  { id: "english", icon: LanguagesIcon },
+  { id: "hebrew", icon: BookOpen },
   { id: "writing", icon: PenLine },
   { id: "code", icon: Code2 },
 ];
