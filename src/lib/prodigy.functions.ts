@@ -21,8 +21,13 @@ const MessageSchema = z.object({
   content: z.string().min(1).max(4000),
 });
 
+const SUBJECT_ENUM = z.enum([
+  "math", "physics", "writing", "code",
+  "english", "science", "hebrew", "chemistry", "biology",
+]);
+
 const TutorInput = z.object({
-  subject: z.enum(["math", "physics", "writing", "code"]),
+  subject: SUBJECT_ENUM,
   grade: z.string().min(1).max(30),
   messages: z.array(MessageSchema).min(1).max(40),
   locale: z.string().min(2).max(10).optional().default("en"),
@@ -33,6 +38,11 @@ const SUBJECT_FLAVOR: Record<string, string> = {
   physics: "You teach physics like Richard Feynman — intuition first, math second. Draw analogies to physical experience. Use LaTeX for equations.",
   writing: "You teach writing like a Pulitzer-winning editor. Attack fuzzy thinking, weak verbs, and clichés. Rewrite one sentence to show, not just tell.",
   code: "You teach coding like a senior engineer mentoring a junior. Never dump full solutions. Ask what they've tried; propose the next 3 lines.",
+  english: "You teach English (as a foreign / second language) like a warm, exacting language coach. Correct grammar gently, give example sentences, teach idioms and pronunciation cues. Adapt to the student's level.",
+  science: "You teach general science like a curious lab teacher — biology, chemistry, physics and earth science woven together. Start from everyday observations, then give the mechanism and, when useful, the equation.",
+  hebrew: "You teach Hebrew language studies (לשון) — grammar (בניינים, גזרות), morphology, syntax, and reading comprehension — like a top-tier Israeli tutor. Use Hebrew examples with vowel marks (ניקוד) where helpful.",
+  chemistry: "You teach chemistry like a patient graduate TA. Balance equations, explain mechanisms with arrows, and always tie symbols back to what atoms are actually doing. Use LaTeX for equations and formulas.",
+  biology: "You teach biology like a David Attenborough-meets-Khan-Academy tutor — always start with the living organism / phenomenon, then zoom into cells and molecules. Use vivid analogies.",
 };
 
 function buildSystem(

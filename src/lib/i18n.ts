@@ -373,3 +373,36 @@ const DICTS: Record<LangCode, Dict> = {
 export function t(code: string): Dict {
   return DICTS[normalizeLang(code)];
 }
+
+// -------- Subject labels (extensible) --------
+// Note: subject id is stored in the DB as free text, so we can add new subjects
+// without a migration. Labels below feed the sidebar/empty-state UI; the tutor
+// AI always receives the raw id and responds in the user's selected language.
+
+export type Subject =
+  | "math" | "physics" | "writing" | "code"
+  | "english" | "science" | "hebrew" | "chemistry" | "biology";
+
+export const SUBJECT_IDS: Subject[] = [
+  "math", "physics", "chemistry", "biology", "science", "english", "hebrew", "writing", "code",
+];
+
+const SUBJECT_LABELS: Partial<Record<LangCode, Partial<Record<Subject, string>>>> = {
+  en: { math: "Math", physics: "Physics", writing: "Writing", code: "Code", english: "English", science: "Science", hebrew: "Hebrew", chemistry: "Chemistry", biology: "Biology" },
+  he: { math: "מתמטיקה", physics: "פיזיקה", writing: "כתיבה", code: "קוד", english: "אנגלית", science: "מדעים", hebrew: "לשון", chemistry: "כימיה", biology: "ביולוגיה" },
+  ar: { math: "رياضيات", physics: "فيزياء", writing: "كتابة", code: "برمجة", english: "الإنجليزية", science: "علوم", hebrew: "العبرية", chemistry: "كيمياء", biology: "أحياء" },
+  es: { english: "Inglés", science: "Ciencias", hebrew: "Hebreo", chemistry: "Química", biology: "Biología" },
+  fr: { english: "Anglais", science: "Sciences", hebrew: "Hébreu", chemistry: "Chimie", biology: "Biologie" },
+  de: { english: "Englisch", science: "Naturwissenschaften", hebrew: "Hebräisch", chemistry: "Chemie", biology: "Biologie" },
+  ru: { english: "Английский", science: "Естествознание", hebrew: "Иврит", chemistry: "Химия", biology: "Биология" },
+  zh: { english: "英语", science: "科学", hebrew: "希伯来语", chemistry: "化学", biology: "生物" },
+};
+
+export function subjectLabel(code: string, id: Subject): string {
+  const lc = normalizeLang(code);
+  const dict = t(lc) as unknown as Record<string, string>;
+  const extra = SUBJECT_LABELS[lc]?.[id];
+  if (extra) return extra;
+  if (typeof dict[id] === "string") return dict[id];
+  return SUBJECT_LABELS.en?.[id] ?? id;
+}
