@@ -323,10 +323,10 @@ function TutorApp() {
             data={activeConv.data}
             isLoading={activeConv.isLoading}
             locale={locale}
-            onSend={async (content) => {
+            onSend={async (content, attachments) => {
               setPendingReply(true);
               try {
-                await sendMsgFn({ data: { conversation_id: activeId, content } });
+                await sendMsgFn({ data: { conversation_id: activeId, content, attachments: attachments ?? [] } });
                 qc.invalidateQueries({ queryKey: ["conversation", activeId] });
                 qc.invalidateQueries({ queryKey: ["conversations"] });
                 qc.invalidateQueries({ queryKey: ["stuck"] });
