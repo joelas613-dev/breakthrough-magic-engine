@@ -196,7 +196,7 @@ function TutorApp() {
                   className="flex flex-col items-center gap-1 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition text-xs disabled:opacity-50"
                 >
                   <Icon className="w-4 h-4 text-primary" />
-                  <span>{tr[s.id]}</span>
+                  <span>{subjectLabel(locale, s.id)}</span>
                 </button>
               );
             })}
@@ -421,7 +421,7 @@ function EmptyState({ locale, onPick }: { locale: LangCode; onPick: (s: Subject)
                 className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition flex flex-col items-center gap-2"
               >
                 <Icon className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">{tr[s.id]}</span>
+                <span className="text-sm font-medium">{subjectLabel(locale, s.id)}</span>
               </button>
             );
           })}
