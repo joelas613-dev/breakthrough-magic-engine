@@ -24,6 +24,11 @@ import {
   Microscope,
   BookOpen,
   Feather,
+  Paperclip,
+  Camera,
+  Mic,
+  Square,
+  ImageIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -41,6 +46,7 @@ import {
   updateMyProfile,
   listStuckTopics,
   getUsageStatus,
+  transcribeAudio,
 } from "@/lib/prodigy.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
@@ -317,10 +323,10 @@ function TutorApp() {
             data={activeConv.data}
             isLoading={activeConv.isLoading}
             locale={locale}
-            onSend={async (content) => {
+            onSend={async (content, attachments) => {
               setPendingReply(true);
               try {
-                await sendMsgFn({ data: { conversation_id: activeId, content } });
+                await sendMsgFn({ data: { conversation_id: activeId, content, attachments: attachments ?? [] } });
                 qc.invalidateQueries({ queryKey: ["conversation", activeId] });
                 qc.invalidateQueries({ queryKey: ["conversations"] });
                 qc.invalidateQueries({ queryKey: ["stuck"] });
@@ -433,6 +439,38 @@ function EmptyState({ locale, onPick }: { locale: LangCode; onPick: (s: Subject)
 
 type ConvData = { conversation: { id: string; subject: string; title: string; locale: string; grade: string | null }; messages: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] };
 
+type Attachment = { data: string; mime: string; preview: string };
+
+async function fileToAttachment(file: File): Promise<Attachment> {
+  // Downscale large images to keep upload small
+  const maxDim = 1600;
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (width > maxDim || height > maxDim) {
+    const scale = maxDim / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, width, height);
+  const jpeg = canvas.toDataURL("image/jpeg", 0.85);
+  const base64 = jpeg.split(",")[1];
+  return { data: base64, mime: "image/jpeg", preview: jpeg };
+}
+
 function ChatArea({
   data,
   isLoading,
@@ -444,11 +482,20 @@ function ChatArea({
   data: ConvData | undefined;
   isLoading: boolean;
   locale: LangCode;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, attachments?: { data: string; mime: string }[]) => Promise<void>;
   pending: boolean;
 }) {
   const tr = t(locale);
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const transcribeFn = useServerFn(transcribeAudio);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -458,9 +505,68 @@ function ChatArea({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || pending) return;
+    if ((!text && attachments.length === 0) || pending) return;
     setInput("");
-    await onSend(text);
+    const toSend = attachments.map(({ data, mime }) => ({ data, mime }));
+    setAttachments([]);
+    await onSend(text, toSend);
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4 - attachments.length);
+    const next: Attachment[] = [];
+    for (const f of arr) {
+      if (!f.type.startsWith("image/")) continue;
+      try {
+        next.push(await fileToAttachment(f));
+      } catch {
+        toast.error("Failed to load image");
+      }
+    }
+    setAttachments((prev) => [...prev, ...next].slice(0, 4));
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        if (blob.size < 1000) { toast.error("Recording too short"); return; }
+        setTranscribing(true);
+        try {
+          const buf = await blob.arrayBuffer();
+          let bin = ""; const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          const b64 = btoa(bin);
+          const { text } = await transcribeFn({ data: { audio: b64, mime: blob.type, language: locale } });
+          if (text) setInput((prev) => (prev ? prev + " " : "") + text);
+          else toast.error("No speech detected");
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Transcription failed");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      rec.start();
+      recorderRef.current = rec;
+      setRecording(true);
+    } catch {
+      toast.error("Microphone access denied");
+    }
+  }
+
+  function stopRecording() {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
   }
 
   return (
@@ -501,21 +607,64 @@ function ChatArea({
         </div>
       </div>
       <form onSubmit={submit} className="border-t border-border p-3 md:p-4 bg-card/50">
-        <div className="max-w-3xl mx-auto flex gap-2">
+        <div className="max-w-3xl mx-auto space-y-2">
+          {attachments.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {attachments.map((a, i) => (
+                <div key={i} className="relative w-16 h-16 rounded-md overflow-hidden border border-border">
+                  <img src={a.preview} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+                    aria-label="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 items-center">
+            <input ref={galleryInputRef} type="file" accept="image/*" multiple hidden
+              onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden
+              onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
+            <button type="button" onClick={() => galleryInputRef.current?.click()}
+              disabled={pending || attachments.length >= 4}
+              className="h-12 w-11 shrink-0 rounded-md border border-border flex items-center justify-center hover:border-primary hover:bg-primary/5 disabled:opacity-40"
+              aria-label="Attach image">
+              <ImageIcon className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={() => cameraInputRef.current?.click()}
+              disabled={pending || attachments.length >= 4}
+              className="h-12 w-11 shrink-0 rounded-md border border-border flex items-center justify-center hover:border-primary hover:bg-primary/5 disabled:opacity-40"
+              aria-label="Take photo">
+              <Camera className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={recording ? stopRecording : startRecording}
+              disabled={pending || transcribing}
+              className={`h-12 w-11 shrink-0 rounded-md border flex items-center justify-center disabled:opacity-40 ${
+                recording ? "border-destructive bg-destructive/10 text-destructive animate-pulse" : "border-border hover:border-primary hover:bg-primary/5"
+              }`}
+              aria-label={recording ? "Stop recording" : "Record voice"}>
+              {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={tr.askPlaceholder}
+              placeholder={recording ? "🎙 Recording…" : transcribing ? "…" : tr.askPlaceholder}
             className="flex-1 h-12 px-4 rounded-md bg-background border border-border focus:outline-none focus:border-primary text-sm"
             disabled={pending}
           />
           <button
             type="submit"
-            disabled={pending || !input.trim()}
+              disabled={pending || (!input.trim() && attachments.length === 0)}
             className="h-12 w-12 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition"
           >
             {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
+          </div>
         </div>
       </form>
     </>

@@ -124,6 +124,50 @@ const WaitlistInput = z.object({
   goal: z.string().max(500).optional().default(""),
 });
 
+const TranscribeInput = z.object({
+  audio: z.string().min(10).max(20 * 1024 * 1024), // base64
+  mime: z.string().max(80).default("audio/webm"),
+  language: z.string().min(2).max(10).optional(),
+});
+
+export const transcribeAudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => TranscribeInput.parse(input))
+  .handler(async ({ data }): Promise<{ text: string }> => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    // Decode base64 -> bytes
+    const bin = atob(data.audio);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    const ext =
+      data.mime.includes("mp4") || data.mime.includes("m4a") ? "mp4"
+      : data.mime.includes("mpeg") || data.mime.includes("mp3") ? "mp3"
+      : data.mime.includes("wav") ? "wav"
+      : data.mime.includes("ogg") ? "ogg"
+      : "webm";
+
+    const blob = new Blob([bytes], { type: data.mime || `audio/${ext}` });
+    const fd = new FormData();
+    fd.append("model", "openai/gpt-4o-mini-transcribe");
+    fd.append("file", blob, `recording.${ext}`);
+    if (data.language) fd.append("language", data.language.slice(0, 2));
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Lovable-API-Key": key },
+      body: fd,
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Transcription failed: ${res.status} ${errText.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as { text?: string };
+    return { text: (json.text ?? "").trim() };
+  });
+
 const TranslateInput = z.object({
   targetLang: z.string().min(2).max(10),
   strings: z.record(z.string(), z.string()).refine((r) => Object.keys(r).length <= 200, "too many keys"),
@@ -329,7 +373,17 @@ export const getUsageStatus = createServerFn({ method: "GET" })
 
 const SendMessage = z.object({
   conversation_id: z.string().uuid(),
-  content: z.string().min(1).max(4000),
+  content: z.string().max(4000).default(""),
+  attachments: z
+    .array(
+      z.object({
+        data: z.string().min(10).max(10 * 1024 * 1024), // base64, ~7.5MB raw
+        mime: z.string().regex(/^image\/(png|jpeg|jpg|webp|gif)$/i),
+      }),
+    )
+    .max(4)
+    .optional()
+    .default([]),
 });
 
 export const sendMessage = createServerFn({ method: "POST" })
@@ -338,6 +392,10 @@ export const sendMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    if (!data.content.trim() && (!data.attachments || data.attachments.length === 0)) {
+      throw new Error("Empty message");
+    }
 
     // ---- Paywall enforcement ----
     const env = (process.env.PAYMENTS_ENVIRONMENT as "sandbox" | "live") || "live";
@@ -396,21 +454,40 @@ export const sendMessage = createServerFn({ method: "POST" })
     if (priorErr) throw new Error(priorErr.message);
 
     // Insert user message
+    const attachmentNote =
+      data.attachments && data.attachments.length > 0
+        ? (data.content.trim() ? "\n\n" : "") + `📷 ${data.attachments.length} image${data.attachments.length === 1 ? "" : "s"} attached`
+        : "";
     const { data: userMsg, error: insErr } = await context.supabase
       .from("messages")
       .insert({
         conversation_id: conv.id,
         user_id: context.userId,
         role: "user",
-        content: data.content,
+        content: (data.content || "").trim() + attachmentNote,
       })
       .select("id, role, content, created_at")
       .single();
     if (insErr) throw new Error(insErr.message);
 
+    // Build multimodal content for the newest user turn if attachments are present.
+    const latestUserContent =
+      data.attachments && data.attachments.length > 0
+        ? [
+            {
+              type: "text" as const,
+              text: data.content.trim() || "Please analyze the attached image(s) and help me with this problem.",
+            },
+            ...data.attachments.map((a) => ({
+              type: "image" as const,
+              image: `data:${a.mime};base64,${a.data}`,
+            })),
+          ]
+        : data.content;
+
     const history = [
       ...(prior ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-      { role: "user" as const, content: data.content },
+      { role: "user" as const, content: latestUserContent as unknown as string },
     ];
 
     const gateway = createLovableAiGatewayProvider(key);
