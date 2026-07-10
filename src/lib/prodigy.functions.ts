@@ -184,11 +184,20 @@ export const translateStrings = createServerFn({ method: "POST" })
     const model = gateway("google/gemini-3-flash-preview");
     const langName = LANGUAGE_NAMES[code];
     const payload = JSON.stringify(data.strings);
-    const { text } = await generateText({
-      model,
-      system: `You are a professional marketing translator. Translate every VALUE in the given JSON object into fluent, natural ${langName}. KEEP KEYS UNCHANGED. Keep the same JSON shape. Preserve emojis, $ symbols, numbers, and any HTML/markdown as-is. Return ONLY the JSON object, no code fences, no commentary.`,
-      messages: [{ role: "user", content: payload }],
-    });
+    let text: string;
+    try {
+      const res = await generateText({
+        model,
+        system: `You are a professional marketing translator. Translate every VALUE in the given JSON object into fluent, natural ${langName}. KEEP KEYS UNCHANGED. Keep the same JSON shape. Preserve emojis, $ symbols, numbers, and any HTML/markdown as-is. Return ONLY the JSON object, no code fences, no commentary.`,
+        messages: [{ role: "user", content: payload }],
+      });
+      text = res.text;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[translateStrings] AI gateway error:", msg);
+      // Graceful fallback (e.g. 402 Payment Required / rate limit) — return source strings
+      return { translations: data.strings };
+    }
     let cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
     try {
       const parsed = JSON.parse(cleaned) as Record<string, string>;
