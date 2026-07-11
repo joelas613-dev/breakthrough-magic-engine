@@ -104,8 +104,8 @@ Never skip a section. Never fewer than 10 practice problems. Never omit a soluti
 export const tutorReply = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => TutorInput.parse(input))
   .handler(async ({ data }): Promise<{ reply: string }> => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-2.5-flash");
@@ -182,8 +182,8 @@ export const translateStrings = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ translations: Record<string, string> }> => {
     const code = normalizeLang(data.targetLang);
     if (code === "en") return { translations: data.strings };
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-2.5-flash");
     const langName = LANGUAGE_NAMES[code];
@@ -403,8 +403,8 @@ export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SendMessage.parse(input))
   .handler(async ({ context, data }) => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     if (!data.content.trim() && (!data.attachments || data.attachments.length === 0)) {
       throw new Error("Empty message");
@@ -524,10 +524,10 @@ export const sendMessage = createServerFn({ method: "POST" })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       const status = (err as { statusCode?: number })?.statusCode;
-      console.error("[sendMessage] OpenRouter error:", status, msg, err);
+      console.error("[sendMessage] AI gateway error:", status, msg, err);
       if (status === 402 || /Payment Required/i.test(msg)) {
         throw new Error(
-          "OpenRouter account is out of credits. Add credits at openrouter.ai → Credits.",
+          "AI balance exhausted. Add credits in workspace settings → Cloud & AI balance.",
         );
       }
       if (status === 429 || /rate limit/i.test(msg)) {
