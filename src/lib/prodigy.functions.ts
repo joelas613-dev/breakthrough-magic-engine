@@ -134,10 +134,14 @@ export const transcribeAudio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => TranscribeInput.parse(input))
   .handler(async ({ data }): Promise<{ text: string }> => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) {
+      throw new Error(
+        "Voice transcription requires OPENAI_API_KEY (OpenRouter does not support audio). Add an OpenAI key or type your question.",
+      );
+    }
+    void data.audio;
 
-    // Decode base64 -> bytes
     const bin = atob(data.audio);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -151,13 +155,13 @@ export const transcribeAudio = createServerFn({ method: "POST" })
 
     const blob = new Blob([bytes], { type: data.mime || `audio/${ext}` });
     const fd = new FormData();
-    fd.append("model", "openai/gpt-4o-mini-transcribe");
+    fd.append("model", "gpt-4o-mini-transcribe");
     fd.append("file", blob, `recording.${ext}`);
     if (data.language) fd.append("language", data.language.slice(0, 2));
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { "Lovable-API-Key": key },
+      headers: { Authorization: `Bearer ${key}` },
       body: fd,
     });
     if (!res.ok) {
