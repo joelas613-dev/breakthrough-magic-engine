@@ -524,15 +524,16 @@ export const sendMessage = createServerFn({ method: "POST" })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       const status = (err as { statusCode?: number })?.statusCode;
+      console.error("[sendMessage] OpenRouter error:", status, msg, err);
       if (status === 402 || /Payment Required/i.test(msg)) {
         throw new Error(
-          "The AI tutor is temporarily unavailable — the workspace is out of AI credits. Please add credits in Workspace Settings → Plans & Credits and try again.",
+          "OpenRouter account is out of credits. Add credits at openrouter.ai → Credits.",
         );
       }
       if (status === 429 || /rate limit/i.test(msg)) {
         throw new Error("Too many requests right now. Please wait a moment and try again.");
       }
-      throw new Error("The AI tutor could not respond right now. Please try again shortly.");
+      throw new Error(`AI error: ${msg.slice(0, 300)}`);
     }
 
     // Persist assistant
