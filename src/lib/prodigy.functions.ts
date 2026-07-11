@@ -182,8 +182,8 @@ export const translateStrings = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ translations: Record<string, string> }> => {
     const code = normalizeLang(data.targetLang);
     if (code === "en") return { translations: data.strings };
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-2.5-flash");
     const langName = LANGUAGE_NAMES[code];
@@ -403,8 +403,8 @@ export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SendMessage.parse(input))
   .handler(async ({ context, data }) => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     if (!data.content.trim() && (!data.attachments || data.attachments.length === 0)) {
       throw new Error("Empty message");
