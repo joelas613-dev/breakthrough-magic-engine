@@ -67,6 +67,16 @@ export function createLovableAiGatewayProvider(
   });
 }
 
+export function createGeminiProvider(geminiApiKey: string) {
+  return createOpenAICompatible({
+    name: "gemini",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+    headers: {
+      Authorization: `Bearer ${geminiApiKey}`,
+    },
+  });
+}
+
 export function getLovableAiGatewayRunId(request: Request) {
   return request.headers.get(LOVABLE_AIG_RUN_ID_HEADER)?.trim() || undefined;
 }
