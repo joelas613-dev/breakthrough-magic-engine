@@ -503,18 +503,33 @@ export const sendMessage = createServerFn({ method: "POST" })
     const model = gateway("google/gemini-3-flash-preview");
 
     const stuckList = (stuck ?? []).map((s) => s.topic);
-    const { text } = await generateText({
-      model,
-      system: buildSystem(
-        conv.subject,
-        conv.grade || "middle school",
-        conv.locale || "en",
-        stuckList,
-        profile?.display_name ?? null,
-      ),
-      messages: history,
-    });
-    const reply = text.trim();
+    let reply: string;
+    try {
+      const { text } = await generateText({
+        model,
+        system: buildSystem(
+          conv.subject,
+          conv.grade || "middle school",
+          conv.locale || "en",
+          stuckList,
+          profile?.display_name ?? null,
+        ),
+        messages: history,
+      });
+      reply = text.trim();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const status = (err as { statusCode?: number })?.statusCode;
+      if (status === 402 || /Payment Required/i.test(msg)) {
+        throw new Error(
+          "The AI tutor is temporarily unavailable — the workspace is out of AI credits. Please add credits in Workspace Settings → Plans & Credits and try again.",
+        );
+      }
+      if (status === 429 || /rate limit/i.test(msg)) {
+        throw new Error("Too many requests right now. Please wait a moment and try again.");
+      }
+      throw new Error("The AI tutor could not respond right now. Please try again shortly.");
+    }
 
     // Persist assistant
     const { data: asstMsg, error: asstErr } = await context.supabase
