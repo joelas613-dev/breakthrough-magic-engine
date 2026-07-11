@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createGeminiProvider } from "./ai-gateway.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { LANGUAGE_NAMES, normalizeLang, isRtl, type LangCode } from "./i18n";
 
@@ -104,11 +104,11 @@ Never skip a section. Never fewer than 10 practice problems. Never omit a soluti
 export const tutorReply = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => TutorInput.parse(input))
   .handler(async ({ data }): Promise<{ reply: string }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Missing GEMINI_API_KEY");
 
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
+    const gateway = createGeminiProvider(key);
+    const model = gateway("gemini-flash-latest");
 
     const { text } = await generateText({
       model,
@@ -182,10 +182,10 @@ export const translateStrings = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ translations: Record<string, string> }> => {
     const code = normalizeLang(data.targetLang);
     if (code === "en") return { translations: data.strings };
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Missing GEMINI_API_KEY");
+    const gateway = createGeminiProvider(key);
+    const model = gateway("gemini-flash-latest");
     const langName = LANGUAGE_NAMES[code];
     const payload = JSON.stringify(data.strings);
     let text: string;
@@ -403,8 +403,8 @@ export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SendMessage.parse(input))
   .handler(async ({ context, data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Missing GEMINI_API_KEY");
 
     if (!data.content.trim() && (!data.attachments || data.attachments.length === 0)) {
       throw new Error("Empty message");
@@ -503,8 +503,8 @@ export const sendMessage = createServerFn({ method: "POST" })
       { role: "user" as const, content: latestUserContent as unknown as string },
     ];
 
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
+    const gateway = createGeminiProvider(key);
+    const model = gateway("gemini-flash-latest");
 
     const stuckList = (stuck ?? []).map((s) => s.topic);
     let reply: string;
