@@ -104,8 +104,8 @@ Never skip a section. Never fewer than 10 practice problems. Never omit a soluti
 export const tutorReply = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => TutorInput.parse(input))
   .handler(async ({ data }): Promise<{ reply: string }> => {
-    const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("Missing OPENROUTER_API_KEY");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-2.5-flash");
