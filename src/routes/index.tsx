@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, createContext, useContext, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target, Globe, ChevronDown } from "lucide-react";
+import { ArrowRight, GraduationCap, Brain, Sigma, Atom, PenLine, Code2, Check, Loader2, Sparkles, Clock, Send, Trophy, Zap, Target, Globe, ChevronDown, Menu, Home, FileBarChart, Phone, Mail, HelpCircle, BookOpen, DollarSign, Layers } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -16,6 +16,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/")({
   component: ProdigyLanding,
@@ -239,9 +248,104 @@ function Nav() {
           <Link to="/app" className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition">
             {s.navOpenTutor}
           </Link>
+          <MobileMenu />
         </div>
       </div>
     </header>
+  );
+}
+
+function MobileMenu() {
+  const { s, locale } = useL();
+  const rtl = isRtl(locale);
+  const items = [
+    { icon: Home, label: rtl ? "עמוד בית" : "Home", href: "#top" },
+    { icon: FileBarChart, label: rtl ? "דוחות להורה" : "Parent reports", href: "#parent-reports" },
+    { icon: Layers, label: s.navMethod, href: "#method" },
+    { icon: BookOpen, label: s.navSubjects, href: "#subjects" },
+    { icon: Sparkles, label: s.navTutor, href: "#tutor" },
+    { icon: DollarSign, label: s.navPricing, href: "#pricing" },
+    { icon: HelpCircle, label: rtl ? "שאלות נפוצות" : "FAQ", href: "#faq" },
+  ];
+  return (
+    <Sheet>
+      <SheetTrigger
+        aria-label="Menu"
+        className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition"
+      >
+        <Menu className="w-4 h-4" />
+      </SheetTrigger>
+      <SheetContent side={rtl ? "right" : "left"} className="w-[300px] sm:w-[340px] bg-background border-border p-0 flex flex-col">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-border text-left">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-primary-foreground" strokeWidth={2.5} />
+            </div>
+            <SheetTitle className="font-semibold tracking-tight text-lg">PRODIGY</SheetTitle>
+          </div>
+          <SheetDescription className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            {rtl ? "תפריט ניווט" : "Navigation menu"}
+          </SheetDescription>
+        </SheetHeader>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <ul className="space-y-1">
+            {items.map((it) => (
+              <li key={it.label}>
+                <SheetClose asChild>
+                  <a
+                    href={it.href}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-foreground/90 hover:bg-surface-2 hover:text-primary transition"
+                  >
+                    <it.icon className="w-4 h-4 opacity-70" />
+                    <span>{it.label}</span>
+                  </a>
+                </SheetClose>
+              </li>
+            ))}
+            <li className="pt-2 mt-2 border-t border-border">
+              <SheetClose asChild>
+                <Link
+                  to="/app"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{s.navOpenTutor}</span>
+                </Link>
+              </SheetClose>
+            </li>
+          </ul>
+        </nav>
+
+        <div id="contact" className="px-6 py-5 border-t border-border bg-surface/50">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
+            {rtl ? "צור קשר" : "Contact"}
+          </div>
+          <div className="space-y-2">
+            <a
+              href="tel:+9720548680845"
+              dir="ltr"
+              className="flex items-center gap-3 text-sm text-foreground hover:text-primary transition"
+            >
+              <Phone className="w-4 h-4 text-primary" />
+              <span className="font-mono">+972 054-868-0845</span>
+            </a>
+            <a
+              href="mailto:hello@prodigy.ai"
+              className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition"
+            >
+              <Mail className="w-4 h-4" />
+              <span>hello@prodigy.ai</span>
+            </a>
+          </div>
+          <p className="mt-4 text-[11px] text-muted-foreground leading-relaxed">
+            {rtl
+              ? "זמינים 7 ימים בשבוע, 09:00–21:00"
+              : "Available 7 days a week, 09:00–21:00"}
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
