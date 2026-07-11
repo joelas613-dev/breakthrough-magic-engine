@@ -524,10 +524,10 @@ export const sendMessage = createServerFn({ method: "POST" })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       const status = (err as { statusCode?: number })?.statusCode;
-      console.error("[sendMessage] OpenRouter error:", status, msg, err);
+      console.error("[sendMessage] AI gateway error:", status, msg, err);
       if (status === 402 || /Payment Required/i.test(msg)) {
         throw new Error(
-          "OpenRouter account is out of credits. Add credits at openrouter.ai → Credits.",
+          "AI balance exhausted. Add credits in workspace settings → Cloud & AI balance.",
         );
       }
       if (status === 429 || /rate limit/i.test(msg)) {
