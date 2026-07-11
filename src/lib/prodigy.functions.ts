@@ -108,7 +108,7 @@ export const tutorReply = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing GEMINI_API_KEY");
 
     const gateway = createGeminiProvider(key);
-    const model = gateway("gemini-flash-latest");
+    const model = gateway("gemini-2.5-flash-lite");
 
     const { text } = await generateText({
       model,
@@ -185,7 +185,7 @@ export const translateStrings = createServerFn({ method: "POST" })
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("Missing GEMINI_API_KEY");
     const gateway = createGeminiProvider(key);
-    const model = gateway("gemini-flash-latest");
+    const model = gateway("gemini-2.5-flash-lite");
     const langName = LANGUAGE_NAMES[code];
     const payload = JSON.stringify(data.strings);
     let text: string;
@@ -504,7 +504,7 @@ export const sendMessage = createServerFn({ method: "POST" })
     ];
 
     const gateway = createGeminiProvider(key);
-    const model = gateway("gemini-flash-latest");
+    const model = gateway("gemini-2.5-flash-lite");
 
     const stuckList = (stuck ?? []).map((s) => s.topic);
     let reply: string;
