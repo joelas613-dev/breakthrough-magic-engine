@@ -184,18 +184,35 @@ export const translateStrings = createServerFn({ method: "POST" })
     if (code === "en") return { translations: data.strings };
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("Missing GEMINI_API_KEY");
-    const gateway = createGeminiProvider(key);
-    const model = gateway("gemini-3.1-flash-lite");
     const langName = LANGUAGE_NAMES[code];
     const payload = JSON.stringify(data.strings);
     let text: string;
     try {
-      const res = await generateText({
-        model,
-        system: `You are a professional marketing translator. Translate every VALUE in the given JSON object into fluent, natural ${langName}. KEEP KEYS UNCHANGED. Keep the same JSON shape. Preserve emojis, $ symbols, numbers, and any HTML/markdown as-is. Return ONLY the JSON object, no code fences, no commentary.`,
-        messages: [{ role: "user", content: payload }],
-      });
-      text = res.text;
+      const system = `You are a professional marketing translator. Translate every VALUE in the given JSON object into fluent, natural ${langName}. KEEP KEYS UNCHANGED. Keep the same JSON shape. Preserve emojis, $ symbols, numbers, and any HTML/markdown as-is. Return ONLY the JSON object, no code fences, no commentary.`;
+      const httpRes = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gemini-3.1-flash-lite",
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: payload },
+            ],
+            response_format: { type: "json_object" },
+          }),
+        },
+      );
+      if (!httpRes.ok) {
+        const body = await httpRes.text();
+        throw new Error(`HTTP ${httpRes.status}: ${body.slice(0, 200)}`);
+      }
+      const json = await httpRes.json() as { choices?: Array<{ message?: { content?: string } }> };
+      text = json.choices?.[0]?.message?.content ?? "";
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[translateStrings] AI gateway error:", msg);
